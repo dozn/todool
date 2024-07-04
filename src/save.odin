@@ -1,43 +1,38 @@
 package src
 
-import "core:unicode"
-import "core:fmt"
-import "core:slice"
-import "core:time"
-import "core:io"
-import "core:strings"
-import "core:strconv"
-import "core:mem"
+import "base:runtime"
 import "core:bytes"
-import "core:log"
-import "core:os"
 import "core:encoding/json"
+import "core:fmt"
+import "core:io"
+import "core:log"
 import "core:math"
 import "core:math/bits"
-import "core:runtime"
-import "cutf8"
+import "core:mem"
+import "core:slice"
+import "core:strconv"
+import "core:strings"
+import "core:time"
 
 save_loc: runtime.Source_Code_Location
 
 SIGNATURE_LENGTH :: 8 * size_of(u8)
-SAVE_SIGNATURE_TODOOL := [8]u8 { 'T', 'O', 'D', 'O', 'O', 'L', '_', '_' }
-SAVE_SIGNATURE_VIEWS := [8]u8 { 'V', 'I', 'E', 'W', 'S', '_', '_', '_' }
-SAVE_SIGNATURE_TAGS := [8]u8 { 'T', 'A', 'G', 'S', '_', '_', '_', '_' }
-SAVE_SIGNATURE_DATA := [8]u8 { 'D', 'A', 'T', 'A', '_', '_', '_', '_' }
-SAVE_SIGNATURE_FILTER := [8]u8 { 'F', 'I', 'L', 'T', 'E', 'R', '_', '_' }
-SAVE_SIGNATURE_FLAGS := [8]u8 { 'F', 'L', 'A', 'G', 'S', '_', '_', '_' }
-SAVE_SIGNATURE_ARCHIVE := [8]u8 { 'A', 'R', 'C', 'H', 'I', 'V', 'E', '_' }
+SAVE_SIGNATURE_TODOOL := [8]u8{'T', 'O', 'D', 'O', 'O', 'L', '_', '_'}
+SAVE_SIGNATURE_VIEWS := [8]u8{'V', 'I', 'E', 'W', 'S', '_', '_', '_'}
+SAVE_SIGNATURE_TAGS := [8]u8{'T', 'A', 'G', 'S', '_', '_', '_', '_'}
+SAVE_SIGNATURE_DATA := [8]u8{'D', 'A', 'T', 'A', '_', '_', '_', '_'}
+SAVE_SIGNATURE_FILTER := [8]u8{'F', 'I', 'L', 'T', 'E', 'R', '_', '_'}
+SAVE_SIGNATURE_FLAGS := [8]u8{'F', 'L', 'A', 'G', 'S', '_', '_', '_'}
+SAVE_SIGNATURE_ARCHIVE := [8]u8{'A', 'R', 'C', 'H', 'I', 'V', 'E', '_'}
 
 Save_Flag :: enum u8 {
 	// simple
 	Bookmark,
 	Separator,
-
 	Image_Path, // u16be string len + [N]u8 byte data
 	Link_Path, // u16be string len + [N]u8 byte data
 	Timestamp, // i64be included = time.Time
 	Folded, // NO data included u16be length + N * size_of(u32be)
-
 	Highlight,
 }
 Save_Flags :: bit_set[Save_Flag]
@@ -74,20 +69,20 @@ buffer_write_ss :: proc(buffer: ^bytes.Buffer, ss: ^Small_String) -> (err: io.Er
 
 buffer_write_int_i64 :: proc(buffer: ^bytes.Buffer, value: int) -> (err: io.Error) {
 	value := i64be(value)
-	bytes.buffer_write_ptr(buffer, &value, size_of(i64be)) or_return	
+	bytes.buffer_write_ptr(buffer, &value, size_of(i64be)) or_return
 	return
 }
 
 buffer_write_int_u32 :: proc(buffer: ^bytes.Buffer, value: int) -> (err: io.Error) {
 	value := u32be(value)
-	bytes.buffer_write_ptr(buffer, &value, size_of(u32be)) or_return	
+	bytes.buffer_write_ptr(buffer, &value, size_of(u32be)) or_return
 	return
 }
 
 // Header for a byte blob
 Save_Header :: struct {
-	signature: [8]u8,
-	version: u8,
+	signature:  [8]u8,
+	version:    u8,
 	block_size: u32be, // region that data ends at
 }
 
@@ -97,7 +92,6 @@ Save_RW_Error :: enum {
 	Unexpected_Signature,
 	Unsupported_Version,
 	No_Space_Advance, // + loc
-	
 	Block_Not_Fully_Read,
 	File_Not_Fully_Read,
 }
@@ -108,26 +102,33 @@ Save_Error :: union #shared_nil {
 }
 
 save_push_header :: proc(
-	buffer: ^bytes.Buffer, 
+	buffer: ^bytes.Buffer,
 	signature: [8]u8,
 	version: u8,
-) -> (block_start: int, block_size: ^u32be, err: Save_Error) {
+) -> (
+	block_start: int,
+	block_size: ^u32be,
+	err: Save_Error,
+) {
 	header := Save_Header {
 		signature = signature,
-		version = version,
+		version   = version,
 	}
 
 	old := len(buffer.buf)
 	bytes.buffer_write_ptr(buffer, &header, size_of(Save_Header)) or_return
 	block_start = len(buffer.buf)
-	block_size = cast(^u32be) &buffer.buf[old + int(offset_of(Save_Header, block_size))]
+	block_size = cast(^u32be)&buffer.buf[old + int(offset_of(Save_Header, block_size))]
 
 	return
 }
 
-load_header :: proc(data: ^[]u8, signature: [8]u8) -> (
+load_header :: proc(
+	data: ^[]u8,
+	signature: [8]u8,
+) -> (
 	version: u8,
-	output: []byte, 
+	output: []byte,
 	err: Save_Error,
 ) {
 	// stop if no space is left
@@ -157,12 +158,12 @@ save_tags :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 	defer block_size^ = u32be(len(buffer.buf) - block_start)
 
 	// write out small string content 
-	for i in 0..<8 {
+	for i in 0 ..< 8 {
 		buffer_write_string_u8(buffer, ss_string(sb.tags.names[i])) or_return
-	}	
+	}
 
 	// write out colors
-	for i in 0..<8 {
+	for i in 0 ..< 8 {
 		buffer_write_color(buffer, theme.tags[i]) or_return
 	}
 
@@ -173,7 +174,7 @@ save_tags :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 save_views :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 	block_start, block_size := save_push_header(buffer, SAVE_SIGNATURE_VIEWS, 1) or_return
 	defer block_size^ = u32be(len(buffer.buf) - block_start)
-	
+
 	// mode count
 	bytes.buffer_write_byte(buffer, u8(len(Mode))) or_return
 	bytes.buffer_write_byte(buffer, u8(app.mmpp.mode)) or_return
@@ -191,21 +192,17 @@ save_views :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 		bytes.buffer_write_ptr(buffer, &temp, size_of(i32be))
 	}
 
-	return		
+	return
 }
 
 Save_Task_V1 :: struct {
 	indentation: u8,
-	state: u8,
-	tags: u8,
+	state:       u8,
+	tags:        u8,
 	text_length: u8,
 }
 
-save_data :: proc(
-	buffer: ^bytes.Buffer, 
-	removed: []int,
-	valid_length: int,
-) -> (err: Save_Error) {
+save_data :: proc(buffer: ^bytes.Buffer, removed: []int, valid_length: int) -> (err: Save_Error) {
 	block_start, block_size := save_push_header(buffer, SAVE_SIGNATURE_DATA, 1) or_return
 	defer block_size^ = u32be(len(buffer.buf) - block_start)
 
@@ -216,7 +213,7 @@ save_data :: proc(
 	// write all lines
 	t: Save_Task_V1
 	removed_index: int
-	for list_index in 0..<valid_length {
+	for list_index in 0 ..< valid_length {
 		task := &app.pool.list[list_index]
 
 		// dont add any removed line
@@ -227,21 +224,16 @@ save_data :: proc(
 		} else {
 			bytes.buffer_write_byte(buffer, 0) or_return
 
-			t = {
-				u8(task.indentation),
-				u8(task.state),
-				task.tags,
-				task.box.ss.length,
-			}
+			t = {u8(task.indentation), u8(task.state), task.tags, task.box.ss.length}
 			// write blob
 			bytes.buffer_write_ptr(buffer, &t, size_of(Save_Task_V1)) or_return
-			
+
 			// write textual content
 			bytes.buffer_write(buffer, task.box.ss.buf[:task.box.ss.length]) or_return
 		}
 	}
 
-	return		
+	return
 }
 
 save_filter :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
@@ -278,17 +270,13 @@ save_filter :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 	for list_index in app.pool.filter {
 		index := u32be(list_index)
 		bytes.buffer_write_ptr(buffer, &index, size_of(u32be)) or_return
-	}	
+	}
 
 	return
 }
 
 // line_index + bit_set of common flags without associated data
-save_flags :: proc(
-	buffer: ^bytes.Buffer, 
-	removed: []int,
-	valid_length: int,
-) -> (err: Save_Error) {
+save_flags :: proc(buffer: ^bytes.Buffer, removed: []int, valid_length: int) -> (err: Save_Error) {
 	block_start, block_size := save_push_header(buffer, SAVE_SIGNATURE_FLAGS, 1) or_return
 	defer block_size^ = u32be(len(buffer.buf) - block_start)
 
@@ -296,11 +284,11 @@ save_flags :: proc(
 	{
 		old := len(buffer.buf)
 		resize(&buffer.buf, old + size_of(u32be))
-		flag_count = cast(^u32be) &buffer.buf[old]
+		flag_count = cast(^u32be)&buffer.buf[old]
 	}
 
 	removed_index: int
-	for list_index in 0..<valid_length {
+	for list_index in 0 ..< valid_length {
 		task := &app.pool.list[list_index]
 		flags: Save_Flags
 
@@ -311,39 +299,42 @@ save_flags :: proc(
 		}
 
 		if task_bookmark_is_valid(task) {
-			flags += { Save_Flag.Bookmark }
+			flags += {Save_Flag.Bookmark}
 		}
 		if task_separator_is_valid(task) {
-			flags += { Save_Flag.Separator }
+			flags += {Save_Flag.Separator}
 		}
 		if image_display_has_path(task.image_display) {
-			flags += { Save_Flag.Image_Path }
+			flags += {Save_Flag.Image_Path}
 		}
 		if task_link_is_valid(task) {
-			flags += { Save_Flag.Link_Path }
+			flags += {Save_Flag.Link_Path}
 		}
 		if task_time_date_is_valid(task) {
-			flags += { Save_Flag.Timestamp }
+			flags += {Save_Flag.Timestamp}
 		}
 		if task.filter_folded {
-			flags += { Save_Flag.Folded }
+			flags += {Save_Flag.Folded}
 		}
 		if task.highlight {
-			flags += { Save_Flag.Highlight }
+			flags += {Save_Flag.Highlight}
 		}
 
 		// in case any flag was set, write them linearly in mem
 		if flags != {} {
 			index := u32be(list_index)
 			bytes.buffer_write_ptr(buffer, &index, size_of(u32be)) or_return
-			bytes.buffer_write_byte(buffer, transmute(u8) flags) or_return
+			bytes.buffer_write_byte(buffer, transmute(u8)flags) or_return
 
 			// NOTE dont change the order of writes upcoming
 			if .Image_Path in flags {
 				buffer_write_string_u16(buffer, image_path(task.image_display.img)) or_return
 			}
 			if .Link_Path in flags {
-				buffer_write_string_u16(buffer, strings.to_string(task.button_link.builder)) or_return
+				buffer_write_string_u16(
+					buffer,
+					strings.to_string(task.button_link.builder),
+				) or_return
 			}
 			if .Timestamp in flags {
 				out := i64be(task.time_date.stamp._nsec)
@@ -354,7 +345,7 @@ save_flags :: proc(
 				bytes.buffer_write_ptr(buffer, &count, size_of(u32be)) or_return
 
 				temp: u32be
-				for i in 0..<count {
+				for i in 0 ..< count {
 					temp = u32be(task.filter_children[i])
 					bytes.buffer_write_ptr(buffer, &temp, size_of(u32be)) or_return
 				}
@@ -381,7 +372,7 @@ save_archive :: proc(buffer: ^bytes.Buffer, archive: ^Sidebar_Archive) -> (err: 
 
 	// write strings
 	for child in c {
-		field := cast(^Archive_Button) child
+		field := cast(^Archive_Button)child
 		buffer_write_ss(buffer, &field.ss) or_return
 	}
 
@@ -395,7 +386,7 @@ save_all :: proc(file_path: string) -> (err: Save_Error) {
 
 	// write start signature
 	bytes.buffer_write(&buffer, SAVE_SIGNATURE_TODOOL[:]) or_return
-	
+
 	save_tags(&buffer) or_return
 	save_views(&buffer) or_return
 
@@ -444,16 +435,16 @@ save_all :: proc(file_path: string) -> (err: Save_Error) {
 		// 		break
 		// 	}
 		// }
-		
+
 		// if valid_length != 0 {
 		// 	t := app.pool.list[valid_length - 1]
 		// 	fmt.eprintln("SEE", t.removed, valid_length)
 		// }
-// 
+		// 
 		return
 	}
-	
-	removed, valid_length := collect_sorted_removed_list()	
+
+	removed, valid_length := collect_sorted_removed_list()
 	save_data(&buffer, removed, valid_length) or_return
 	save_flags(&buffer, removed, valid_length) or_return
 	save_filter(&buffer) or_return
@@ -468,7 +459,14 @@ save_all :: proc(file_path: string) -> (err: Save_Error) {
 }
 
 // advance and set the data 
-advance_ptr :: proc(data: ^[]u8, dst: rawptr, size: int, loc := #caller_location) -> (err: Save_Error) {
+advance_ptr :: proc(
+	data: ^[]u8,
+	dst: rawptr,
+	size: int,
+	loc := #caller_location,
+) -> (
+	err: Save_Error,
+) {
 	if len(data) < size {
 		err = .No_Space_Advance
 		save_loc = loc
@@ -494,7 +492,14 @@ advance_byte :: proc(data: ^[]u8, loc := #caller_location) -> (result: u8, err: 
 }
 
 // advance and output a slice for the advanced size
-advance_slice :: proc(data: ^[]u8, size: int, loc := #caller_location) -> (output: []u8, err: Save_Error) {
+advance_slice :: proc(
+	data: ^[]u8,
+	size: int,
+	loc := #caller_location,
+) -> (
+	output: []u8,
+	err: Save_Error,
+) {
 	if len(data) < size {
 		err = .No_Space_Advance
 		save_loc = loc
@@ -507,7 +512,13 @@ advance_slice :: proc(data: ^[]u8, size: int, loc := #caller_location) -> (outpu
 }
 
 // advance and set the data 
-advance_string_u16 :: proc(data: ^[]u8, loc := #caller_location) -> (output: string, err: Save_Error) {
+advance_string_u16 :: proc(
+	data: ^[]u8,
+	loc := #caller_location,
+) -> (
+	output: string,
+	err: Save_Error,
+) {
 	length: u16be
 	advance_ptr(data, &length, size_of(u16be), loc) or_return
 	content := advance_slice(data, int(length), loc) or_return
@@ -516,7 +527,13 @@ advance_string_u16 :: proc(data: ^[]u8, loc := #caller_location) -> (output: str
 }
 
 // advance and set the data 
-advance_string_u8 :: proc(data: ^[]u8, loc := #caller_location) -> (output: string, err: Save_Error) {
+advance_string_u8 :: proc(
+	data: ^[]u8,
+	loc := #caller_location,
+) -> (
+	output: string,
+	err: Save_Error,
+) {
 	length := advance_byte(data, loc) or_return
 	content := advance_slice(data, int(length), loc) or_return
 	output = string(content)
@@ -543,7 +560,7 @@ advance_u32_int :: proc(data: ^[]u8, loc := #caller_location) -> (result: int, e
 advance_check_done :: proc(data: []u8, loc := #caller_location) -> (err: Save_Error) {
 	if len(data) != 0 {
 		err = .Block_Not_Fully_Read
-		save_loc = loc		
+		save_loc = loc
 	}
 
 	return
@@ -562,18 +579,20 @@ load_tags :: proc(data: ^[]u8) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_TAGS) or_return
 
 	switch version {
-		case 1: {
-			string_length: u8
-			for i in 0..<8 {
+	case 1:
+		{
+			//TODO: Declared but not used.
+			// string_length: u8
+			for i in 0 ..< 8 {
 				result := advance_string_u8(&input) or_return
 				ss := sb.tags.names[i]
 				ss_set_string(ss, result)
 			}
 
 			color: u32
-			for i in 0..<8 {
+			for i in 0 ..< 8 {
 				advance_ptr(&input, &color, size_of(u32)) or_return
-				theme.tags[i] = transmute(Color) color
+				theme.tags[i] = transmute(Color)color
 			}
 
 			mode := advance_byte(&input) or_return
@@ -581,7 +600,8 @@ load_tags :: proc(data: ^[]u8) -> (err: Save_Error) {
 			toggle_selector_set(sb.tags.toggle_selector_tag, int(mode))
 		}
 
-		case: err = .Unsupported_Version
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -592,7 +612,8 @@ load_views :: proc(data: ^[]u8) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_VIEWS) or_return
 
 	switch version {
-		case 1: {
+	case 1:
+		{
 			count := advance_byte(&input) or_return
 			mode := advance_byte(&input) or_return
 			app.mmpp.mode = Mode(mode)
@@ -604,7 +625,7 @@ load_views :: proc(data: ^[]u8) -> (err: Save_Error) {
 			scaling_set(SCALE, load_scale)
 
 			temp: i32be
-			for i in 0..<count {
+			for i in 0 ..< count {
 				cam := &app.mmpp.cam[Mode(i)]
 				advance_ptr(&input, &temp, size_of(i32be)) or_return
 				cam_set_x(cam, int(temp))
@@ -613,7 +634,8 @@ load_views :: proc(data: ^[]u8) -> (err: Save_Error) {
 			}
 		}
 
-		case: err = .Unsupported_Version
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -624,18 +646,19 @@ load_data :: proc(data: ^[]u8) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_DATA) or_return
 
 	switch version {
-		case 1: {
+	case 1:
+		{
 			count := advance_u32_int(&input) or_return
 
-			for i in 0..<count {
-				skip := transmute(b8) advance_byte(&input) or_return
+			for i in 0 ..< count {
+				skip := transmute(b8)advance_byte(&input) or_return
 
 				// init data but put it on the free list
 				if skip {
 					// fmt.eprintln("\tFREED at", i)
 					task := task_init(0, "", false)
 					task.removed = true
-					
+
 					// append to free list
 					append(&app.pool.free_list, int(i))
 					continue
@@ -657,7 +680,8 @@ load_data :: proc(data: ^[]u8) -> (err: Save_Error) {
 			// fmt.eprintln("FREE LIST", app.pool.free_list)
 		}
 
-		case: err = .Unsupported_Version
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -668,18 +692,19 @@ load_filter :: proc(data: ^[]u8) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_FILTER) or_return
 
 	switch version {
-		case 1: {
+	case 1:
+		{
 			app.task_head = advance_i64_int(&input) or_return
 			app.task_tail = advance_i64_int(&input) or_return
-			
+
 			box_head := advance_i64_int(&input) or_return
 			box_tail := advance_i64_int(&input) or_return
-			
+
 			focus_index := advance_i64_int(&input) or_return
 			count := advance_u32_int(&input) or_return
 
 			index: u32be
-			for i in 0..<count {
+			for _ in 0 ..< count {
 				advance_ptr(&input, &index, size_of(u32be)) or_return
 				append(&app.pool.filter, int(index))
 			}
@@ -697,8 +722,9 @@ load_filter :: proc(data: ^[]u8) -> (err: Save_Error) {
 				task.box.tail = box_tail
 			}
 		}
-		
-		case: err = .Unsupported_Version
+
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -709,12 +735,13 @@ load_flags :: proc(data: ^[]u8) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_FLAGS) or_return
 
 	switch version {
-		case 1: {
+	case 1:
+		{
 			count := advance_u32_int(&input) or_return
 
-			list_index: u32be 
+			list_index: u32be
 			flags: Save_Flags
-			for i in 0..<count {
+			for _ in 0 ..< count {
 				advance_ptr(&input, &list_index, size_of(u32be)) or_return
 				advance_ptr(&input, &flags, size_of(u8)) or_return
 				task := app_task_list(int(list_index))
@@ -743,24 +770,25 @@ load_flags :: proc(data: ^[]u8) -> (err: Save_Error) {
 					task_set_time_date(task)
 					value: i64be
 					advance_ptr(&input, &value, size_of(i64be)) or_return
-					task.time_date.stamp = time.Time { i64(value) }
+					task.time_date.stamp = time.Time{i64(value)}
 				}
 				if .Folded in flags {
 					task.filter_folded = true
-					
+
 					child_count := advance_u32_int(&input) or_return
 					resize(&task.filter_children, int(child_count))
 
 					temp: u32be
-					for i in 0..<child_count {
+					for child_count_idx in 0 ..< child_count {
 						advance_ptr(&input, &temp, size_of(u32be)) or_return
-						task.filter_children[i] = int(temp)
+						task.filter_children[child_count_idx] = int(temp)
 					}
 				}
 			}
 		}
 
-		case: err = .Unsupported_Version
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -769,14 +797,15 @@ load_flags :: proc(data: ^[]u8) -> (err: Save_Error) {
 
 load_archive :: proc(data: ^[]u8, archive: ^Sidebar_Archive) -> (err: Save_Error) {
 	version, input := load_header(data, SAVE_SIGNATURE_ARCHIVE) or_return
-	
+
 	switch version {
-		case 1: {
+	case 1:
+		{
 			head := advance_i64_int(&input) or_return
 			tail := advance_i64_int(&input) or_return
 			count := advance_u32_int(&input) or_return
 
-			for i in 0..<count {
+			for _ in 0 ..< count {
 				str := advance_string_u8(&input) or_return
 				archive_push(archive, str)
 			}
@@ -785,7 +814,8 @@ load_archive :: proc(data: ^[]u8, archive: ^Sidebar_Archive) -> (err: Save_Error
 			archive.tail = tail
 		}
 
-		case: err = .Unsupported_Version
+	case:
+		err = .Unsupported_Version
 	}
 
 	advance_check_done(input) or_return
@@ -824,97 +854,78 @@ load_all :: proc(data: []u8) -> (err: Save_Error) {
 
 Misc_Save_Load :: struct {
 	// not shown directly to the user,
-	hidden: struct {
-		scale: f32,
-
-		font_regular_path: string,
-		font_bold_path: string,
-
-		window_x: int, 
-		window_y: int,
-		window_width: int,
-		window_height: int,	
-		window_fullscreen: bool,
-		hide_statusbar: bool,
-		hide_menubar: bool,
-
+	hidden:        struct {
+		scale:              f32,
+		font_regular_path:  string,
+		font_bold_path:     string,
+		window_x:           int,
+		window_y:           int,
+		window_width:       int,
+		window_height:      int,
+		window_fullscreen:  bool,
+		hide_statusbar:     bool,
+		hide_menubar:       bool,
 		last_save_location: string,
 	},
-
-	options: struct {
-		tab: int,
-		autosave: bool,
-		invert_x: bool,
-		invert_y: bool,
-		uppercase_word: bool,
-		use_animations: bool,
-
-		opacity: f32,
-		volume: f32,
-		bordered: bool,
-
-		task_gap: int,
-		task_margin: int,
-		kanban_gap: int,
-		kanban_width: int,
-		vim: bool,
-		spell_checking: bool,
-		animation_speed: int,
-		fps: int,
-		
-		progressbar_show: bool,
+	options:       struct {
+		tab:                    int,
+		autosave:               bool,
+		invert_x:               bool,
+		invert_y:               bool,
+		uppercase_word:         bool,
+		use_animations:         bool,
+		opacity:                f32,
+		volume:                 f32,
+		bordered:               bool,
+		task_gap:               int,
+		task_margin:            int,
+		kanban_gap:             int,
+		kanban_width:           int,
+		vim:                    bool,
+		spell_checking:         bool,
+		animation_speed:        int,
+		fps:                    int,
+		progressbar_show:       bool,
 		progressbar_percentage: bool,
 		progressbar_hover_only: bool,
-
-		line_highlight_use: bool,
-		line_highlight_alpha: f32,
+		line_highlight_use:     bool,
+		line_highlight_alpha:   f32,
 	},
-
-	pomodoro: struct {
-		index: int,
-
-		work: int,
-		short_break: int,
-		long_break: int,
-
-		stopwatch_running: bool,
+	pomodoro:      struct {
+		index:                  int,
+		work:                   int,
+		short_break:            int,
+		long_break:             int,
+		stopwatch_running:      bool,
 		stopwatch_acuumulation: int, // time.Duration 
 	},
-
-	power_mode: struct {
-		show: bool,
-
-		particle_lifetime: f32,
+	power_mode:    struct {
+		show:                 bool,
+		particle_lifetime:    f32,
 		particle_alpha_scale: f32,
-		particle_colored: bool,
-
-		screenshake_use: bool,
-		screenshake_amount: f32,
+		particle_colored:     bool,
+		screenshake_use:      bool,
+		screenshake_amount:   f32,
 		screenshake_lifetime: f32,
 	},
-
-	caret: struct {
+	caret:         struct {
 		use_animations: bool,
-		use_motion: bool,
-		use_alpha: bool,
+		use_motion:     bool,
+		use_alpha:      bool,
 	},
-
-	statistics: struct {
+	statistics:    struct {
 		accumulated: int, // time.Duration
-		work_goal: int,
+		work_goal:   int,
 	},
-
-	theme: Theme_Save_Load,
-
+	theme:         Theme_Save_Load,
 	custom_sounds: struct {
-		timer_start: string,
-		timer_stop: string,
+		timer_start:  string,
+		timer_stop:   string,
 		timer_resume: string,
-		timer_ended: string,
+		timer_ended:  string,
 	},
-
-	search: struct {
-		pattern: string,
+	search:        struct {
+		pattern:          string,
 		case_insensitive: bool,
 	},
 }
@@ -927,20 +938,20 @@ json_save_misc :: proc(path: string) -> bool {
 	theme_save: Theme_Save_Load
 	{
 		// NOTE dumb but it works :D
-		theme_save.background = transmute([3]u32) theme.background
-		theme_save.panel = transmute([3]u32) theme.panel
+		theme_save.background = transmute([3]u32)theme.background
+		theme_save.panel = transmute([3]u32)theme.panel
 
-		theme_save.text_default = transmute(u32) theme.text_default
-		theme_save.text_blank = transmute(u32) theme.text_blank
-		theme_save.text_good = transmute(u32) theme.text_good
-		theme_save.text_bad = transmute(u32) theme.text_bad
-		theme_save.text_date = transmute(u32) theme.text_date
-		theme_save.text_link = transmute(u32) theme.text_link
+		theme_save.text_default = transmute(u32)theme.text_default
+		theme_save.text_blank = transmute(u32)theme.text_blank
+		theme_save.text_good = transmute(u32)theme.text_good
+		theme_save.text_bad = transmute(u32)theme.text_bad
+		theme_save.text_date = transmute(u32)theme.text_date
+		theme_save.text_link = transmute(u32)theme.text_link
 
-		theme_save.shadow = transmute(u32) theme.shadow
+		theme_save.shadow = transmute(u32)theme.shadow
 
-		theme_save.caret = transmute(u32) theme.caret
-		theme_save.caret_selection = transmute(u32) theme.caret_selection
+		theme_save.caret = transmute(u32)theme.caret
+		theme_save.caret_selection = transmute(u32)theme.caret_selection
 	}
 
 	pomodoro_diff := time.stopwatch_duration(pomodoro.stopwatch)
@@ -963,10 +974,8 @@ json_save_misc :: proc(path: string) -> bool {
 	value := Misc_Save_Load {
 		hidden = {
 			scale = SCALE,
-
 			font_regular_path = gs.font_regular_path,
 			font_bold_path = gs.font_bold_path,
-
 			window_x = window_x,
 			window_y = window_y,
 			window_width = window_width,
@@ -974,10 +983,8 @@ json_save_misc :: proc(path: string) -> bool {
 			window_fullscreen = app.window_main.fullscreened,
 			hide_statusbar = sb.options.checkbox_hide_statusbar.state,
 			hide_menubar = sb.options.checkbox_hide_menubar.state,
-
 			last_save_location = strings.to_string(app.last_save_location),
 		},
-
 		options = {
 			visuals_tab(),
 			options_autosave(),
@@ -985,11 +992,9 @@ json_save_misc :: proc(path: string) -> bool {
 			sb.options.checkbox_invert_y.state,
 			options_uppercase_word(),
 			visuals_use_animations(),
-			
 			window_opacity_get(app.window_main),
 			options_volume(),
 			options_bordered(),
-
 			sb.options.visuals.task_gap.position,
 			sb.options.visuals.task_margin.position,
 			sb.options.visuals.kanban_gap.position,
@@ -1008,18 +1013,14 @@ json_save_misc :: proc(path: string) -> bool {
 			sb.options.line_highlight.use.state,
 			sb.options.line_highlight.alpha.position,
 		},
-
 		pomodoro = {
 			pomodoro.index,
-
 			int(pomodoro_time_index(0)),
 			int(pomodoro_time_index(1)),
 			int(pomodoro_time_index(2)),
-
 			pomodoro.stopwatch.running,
 			int(pomodoro_diff),
 		},
-
 		power_mode = {
 			pm_show(),
 			sb.options.pm.p_lifetime.position,
@@ -1029,12 +1030,7 @@ json_save_misc :: proc(path: string) -> bool {
 			sb.options.pm.s_amount.position,
 			sb.options.pm.s_lifetime.position,
 		},
-
-		statistics = {
-			int(pomodoro.accumulated),
-			sb.stats.work_today.position,
-		},
-
+		statistics = {int(pomodoro.accumulated), sb.stats.work_today.position},
 		theme = theme_save,
 
 		// just write paths in that might have been set
@@ -1044,27 +1040,13 @@ json_save_misc :: proc(path: string) -> bool {
 			gs.sound_paths[.Timer_Resume],
 			gs.sound_paths[.Timer_Ended],
 		},
-
-		search = {
-			ss_string(&search.text_box.ss),
-			search.case_insensitive,
-		},
-
-		caret = {
-			caret_animate(),
-			caret_motion(),
-			caret_alpha(),
-		},
+		search = {ss_string(&search.text_box.ss), search.case_insensitive},
+		caret = {caret_animate(), caret_motion(), caret_alpha()},
 	}
 
 	result, err := json.marshal(
-		value, 
-		{
-			spec = .MJSON,
-			pretty = true,
-			write_uint_as_hex = true,
-			mjson_keys_use_equal_sign = true,
-		},
+		value,
+		{spec = .MJSON, pretty = true, write_uint_as_hex = true, mjson_keys_use_equal_sign = true},
 	)
 
 	if err == nil {
@@ -1153,7 +1135,7 @@ json_load_misc :: proc(path: string) -> bool {
 	drag_int_set(sb.options.visuals.task_margin, misc.options.task_margin)
 	checkbox_set(sb.options.checkbox_vim, misc.options.vim)
 	checkbox_set(sb.options.checkbox_spell_checking, misc.options.spell_checking)
-	
+
 	// progressbar 
 	checkbox_set(sb.options.progressbar.show, misc.options.progressbar_show)
 	checkbox_set(sb.options.progressbar.percentage, misc.options.progressbar_percentage)
@@ -1176,38 +1158,34 @@ json_load_misc :: proc(path: string) -> bool {
 
 	// power mode
 	{
-		temp := &sb.options.pm	
-		using temp
-
+		temp := &sb.options.pm
 		if misc.power_mode != {} {
-			checkbox_set(ps_show, misc.power_mode.show)
-			drag_float_set(p_lifetime, misc.power_mode.particle_lifetime)
-			drag_float_set(p_alpha_scale, misc.power_mode.particle_alpha_scale)
-			checkbox_set(p_colored, misc.power_mode.particle_colored)
-			checkbox_set(s_use, misc.power_mode.screenshake_use)
-			drag_float_set(s_amount, misc.power_mode.screenshake_amount)
-			drag_float_set(s_lifetime, misc.power_mode.screenshake_lifetime)
+			checkbox_set(temp.ps_show, misc.power_mode.show)
+			drag_float_set(temp.p_lifetime, misc.power_mode.particle_lifetime)
+			drag_float_set(temp.p_alpha_scale, misc.power_mode.particle_alpha_scale)
+			checkbox_set(temp.p_colored, misc.power_mode.particle_colored)
+			checkbox_set(temp.s_use, misc.power_mode.screenshake_use)
+			drag_float_set(temp.s_amount, misc.power_mode.screenshake_amount)
+			drag_float_set(temp.s_lifetime, misc.power_mode.screenshake_lifetime)
 		}
 	}
-	
+
 	// caret
 	{
 		temp := &sb.options.caret
-		using temp
-
 		if misc.caret != {} {
-			checkbox_set(animate, misc.caret.use_animations)
-			checkbox_set(motion, misc.caret.use_motion)
-			checkbox_set(alpha, misc.caret.use_alpha)
+			checkbox_set(temp.animate, misc.caret.use_animations)
+			checkbox_set(temp.motion, misc.caret.use_motion)
+			checkbox_set(temp.alpha, misc.caret.use_alpha)
 		}
 	}
-	
+
 	// statistics
 	drag_int_set(sb.stats.work_today, misc.statistics.work_goal)
 	pomodoro.accumulated = time.Duration(misc.statistics.accumulated)
 
 	pomodoro.stopwatch._start_time = time.tick_now()
-	
+
 	// run everything
 	if pomodoro.stopwatch.running {
 		element_hide(sb.stats.pomodoro_reset, false)
@@ -1241,16 +1219,12 @@ keymap_save :: proc(path: string) -> bool {
 
 	b := strings.builder_make(0, mem.Kilobyte * 2)
 
-	write_content :: proc(
-		b: ^strings.Builder, 
-		name: string, 
-		keymap: ^Keymap,
-	) {
+	write_content :: proc(b: ^strings.Builder, name: string, keymap: ^Keymap) {
 		strings.write_string(b, name)
 		strings.write_byte(b, '\n')
 		count: int
 
-		for node in &keymap.combos {
+		for &node in &keymap.combos {
 			if node.command_index == -1 {
 				continue
 			}
@@ -1272,9 +1246,9 @@ keymap_save :: proc(path: string) -> bool {
 				if node.du >= COMBO_VALUE {
 					fmt.sbprintf(b, " 0x%2x", uint(node.du - COMBO_VALUE))
 				} else {
-					for i in 0..<5 {
+					for i in 0 ..< 5 {
 						bit := bits.bitfield_extract(node.du, uint(i), 1)
-						
+
 						if bit != 0x00 {
 							stringified := du_to_string(i)
 							strings.write_byte(b, ' ')
@@ -1319,11 +1293,7 @@ keymap_load :: proc(path: string) -> bool {
 	bytes := bpath_file_read(path) or_return
 	defer delete(bytes)
 
-	section_read :: proc(
-		keymap: ^Keymap,
-		content: ^string, 
-		section: string, 
-	) -> (ok: bool) {
+	section_read :: proc(keymap: ^Keymap, content: ^string, section: string) -> (ok: bool) {
 		found_section: bool
 		du: u32
 		du_index: int
@@ -1370,7 +1340,7 @@ keymap_load :: proc(path: string) -> bool {
 							if du_res != COMBO_EMPTY {
 								du |= du_res
 							} else {
-								if val, ok := strconv.parse_uint(text); ok {
+								if val, ok_parse_uint := strconv.parse_uint(text); ok_parse_uint {
 									du = u32(val + COMBO_VALUE)
 								} else {
 
@@ -1405,28 +1375,28 @@ keymap_load :: proc(path: string) -> bool {
 json_save_todool :: proc(path: string) -> bool {
 	JSON_Tag :: struct {
 		color: u32,
-		text: string,
+		text:  string,
 	}
 
 	JSON_View_Camera :: [2]f32
 
 
 	JSON_Test :: struct {
-		tag_mode: int,
-		tags: [8]JSON_Tag,
-		view_mode_count: int,
+		tag_mode:          int,
+		tags:              [8]JSON_Tag,
+		view_mode_count:   int,
 		view_current_mode: int,
-		view_scale: f32,
-		view_cameras: []JSON_View_Camera,
+		view_scale:        f32,
+		view_cameras:      []JSON_View_Camera,
 	}
 	test: JSON_Test
 
 	// tags
 	test.tag_mode = sb.tags.tag_show_mode
-	for i in 0..<8 {
+	for i in 0 ..< 8 {
 		tag := &test.tags[i]
 		tag.text = ss_string(sb.tags.names[i])
-		tag.color = transmute(u32) theme.tags[i]
+		tag.color = transmute(u32)theme.tags[i]
 	}
 
 	// view + cams
@@ -1436,15 +1406,11 @@ json_save_todool :: proc(path: string) -> bool {
 	cams: [len(Mode)]JSON_View_Camera
 	for mode, i in Mode {
 		cam := &app.mmpp.cam[mode]
-		cams[i] = { cam.offset_x, cam.offset_y }
+		cams[i] = {cam.offset_x, cam.offset_y}
 	}
 	test.view_cameras = cams[:]
 
-	result, err := json.marshal(test, { 
-		spec = .JSON5,
-		pretty = true,
-		write_uint_as_hex = true,
-	})
+	result, err := json.marshal(test, {spec = .JSON5, pretty = true, write_uint_as_hex = true})
 
 	if err == nil {
 		file_path := bpath_temp(path)

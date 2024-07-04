@@ -1,13 +1,10 @@
 package src
 
-import "core:os"
-import "core:fmt"
-import "core:slice"
-import "core:strings"
 import "core:log"
 import "core:mem"
-import "core:time"
-import "core:math/bits"
+import "core:os"
+import "core:slice"
+import "core:strings"
 import "cutf8"
 import "tfd"
 
@@ -67,14 +64,14 @@ todool_delete_on_empty :: proc(du: u32) {
 	}
 
 	task := app_task_head()
-	
+
 	if int(task.box.ss.length) == 0 {
 		manager := mode_panel_manager_scoped()
 		task_head_tail_push(manager)
 		app.task_state_progression = .Update_Animated
-		
+
 		if task.filter_index == len(app.pool.filter) {
-			item := Undo_Item_Task_Pop {}
+			item := Undo_Item_Task_Pop{}
 			undo_task_pop(manager, &item)
 		} else {
 			task_remove_at_index(manager, task)
@@ -106,7 +103,7 @@ todool_move_up :: proc(du: u32) {
 
 todool_move_down :: proc(du: u32) {
 	if app_filter_empty() {
-		return 
+		return
 	}
 
 	shift := du_shift(du)
@@ -130,7 +127,7 @@ todool_indent_jump_low_prev :: proc(du: u32) {
 
 	task_current := app_task_head()
 	shift := du_shift(du)
-	
+
 	for i := task_current.filter_index - 1; i >= 0; i -= 1 {
 		task := app_task_filter(i)
 
@@ -156,7 +153,7 @@ todool_indent_jump_low_next :: proc(du: u32) {
 	task_current := app_task_head()
 	shift := du_shift(du)
 
-	for i in task_current.filter_index + 1..<len(app.pool.filter) {
+	for i in task_current.filter_index + 1 ..< len(app.pool.filter) {
 		task := app_task_filter(i)
 
 		if task.indentation == 0 {
@@ -178,17 +175,18 @@ todool_indent_jump_same_prev :: proc(du: u32) {
 		return
 	}
 
-	task_current := app_task_head()
+	//TODO: Declared but not used.
+	// task_current := app_task_head()
 	shift := du_shift(du)
 	goal := find_same_indentation_backwards(app.task_head, true)
-	
+
 	if goal != -1 {
 		if task_head_tail_check_begin(shift) {
 			app.task_head = goal
 		}
 		task_head_tail_check_end(shift)
 		window_repaint(app.window_main)
-		element_message(app_task_head().box, .Box_Set_Caret, BOX_END)		
+		element_message(app_task_head().box, .Box_Set_Caret, BOX_END)
 	}
 
 	vim.rep_task = nil
@@ -199,7 +197,8 @@ todool_indent_jump_same_next :: proc(du: u32) {
 		return
 	}
 
-	task_current := app_task_head()
+	//TODO: Declared but not used.
+	// task_current := app_task_head()
 	shift := du_shift(du)
 	goal := find_same_indentation_forwards(app.task_head, true)
 
@@ -210,14 +209,14 @@ todool_indent_jump_same_next :: proc(du: u32) {
 		task_head_tail_check_end(shift)
 		window_repaint(app.window_main)
 		element_message(app_task_filter(goal).box, .Box_Set_Caret, BOX_END)
-	} 
+	}
 
 	vim.rep_task = nil
 }
 
 todool_bookmark_jump :: proc(du: u32) {
 	shift := du_shift(du)
-	
+
 	if len(bs.rows) != 0 && app_filter_not_empty() {
 		bookmark_advance(shift)
 		task := bs.rows[bs.current_index]
@@ -255,7 +254,7 @@ todool_copy_tasks_to_clipboard :: proc(du: u32) {
 	lowest_indentation := tasks_lowest_indentation(iter.low, iter.high)
 
 	// write text into buffer
- 	for task in lh_iter_step(&iter) {
+	for task in lh_iter_step(&iter) {
 		relative_indentation := task.indentation - lowest_indentation
 		task_write_text_indentation(b, task, relative_indentation)
 	}
@@ -292,10 +291,13 @@ todool_copy_tasks_to_clipboard :: proc(du: u32) {
 // }
 
 task_change_state_to :: proc(
-	manager: ^Undo_Manager, 
+	manager: ^Undo_Manager,
 	task: ^Task,
 	state_goal: Task_State,
-) -> (change_count: int, failed_multi: bool) {
+) -> (
+	change_count: int,
+	failed_multi: bool,
+) {
 	// only set all same tasks
 	if task_has_children(task) {
 		current := task.state
@@ -392,7 +394,7 @@ todool_indent_jump_scope :: proc(du: u32) {
 		}
 
 		// search for first indent at 0 
-		for i in 0..<len(app.pool.filter) {
+		for i in 0 ..< len(app.pool.filter) {
 			current := app_task_filter(i)
 
 			if current.indentation == 0 {
@@ -405,7 +407,7 @@ todool_indent_jump_scope :: proc(du: u32) {
 	} else {
 		// check for end first
 		last_good := app.task_head
-		for i in app.task_head + 1..<len(app.pool.filter) {
+		for i in app.task_head + 1 ..< len(app.pool.filter) {
 			next := app_task_filter(i)
 
 			if next.indentation == task_current.indentation {
@@ -447,7 +449,7 @@ todool_selection_stop :: proc(du: u32) {
 	if app_has_selection() {
 		app.task_tail = app.task_head
 		window_repaint(app.window_main)
-	}	
+	}
 }
 
 todool_escape :: proc(du: u32) {
@@ -478,17 +480,17 @@ todool_escape :: proc(du: u32) {
 
 Undo_Item_Filter_Fold :: struct {
 	filter_index: int,
-	count: int,
+	count:        int,
 }
 
 Undo_Item_Filter_Unfold :: struct {
 	filter_index: int,
-	count: int,
+	count:        int,
 	// count * size_of(int) upcoming
 }
 
 undo_filter_fold :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Filter_Fold) item
+	data := cast(^Undo_Item_Filter_Fold)item
 
 	task := app_task_filter(data.filter_index)
 	idx := data.filter_index + 1
@@ -496,19 +498,17 @@ undo_filter_fold :: proc(manager: ^Undo_Manager, item: rawptr) {
 	resize(&task.filter_children, data.count)
 
 	// push upfront
-	output := Undo_Item_Filter_Unfold {
-		data.filter_index,
-		data.count,
-	}
+	output := Undo_Item_Filter_Unfold{data.filter_index, data.count}
 	bytes := undo_push(
-		manager, 
-		undo_filter_unfold, 
-		&output, 
+		manager,
+		undo_filter_unfold,
+		&output,
 		size_of(Undo_Item_Filter_Unfold) + size_of(int) * data.count,
 	)
 	byte_root := &bytes[size_of(Undo_Item_Filter_Unfold)]
 	mem.copy(byte_root, raw_data(task.filter_children), data.count * size_of(int))
-	byte_slice := mem.slice_ptr(cast(^int) byte_root, data.count)
+	//TODO: Declared but not used.
+	// byte_slice := mem.slice_ptr(cast(^int)byte_root, data.count)
 
 	// push to children, subtract from filter
 	copy(app.pool.filter[idx:], app.pool.filter[idx + data.count:])
@@ -517,9 +517,9 @@ undo_filter_fold :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 undo_filter_unfold :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Filter_Unfold) item
-	byte_root := mem.ptr_offset(cast(^u8) item, size_of(Undo_Item_Filter_Unfold))
-	byte_slice := mem.slice_ptr(cast(^int) byte_root, data.count)
+	data := cast(^Undo_Item_Filter_Unfold)item
+	byte_root := mem.ptr_offset(cast(^u8)item, size_of(Undo_Item_Filter_Unfold))
+	byte_slice := mem.slice_ptr(cast(^int)byte_root, data.count)
 
 	task := app_task_filter(data.filter_index)
 	idx := data.filter_index + 1
@@ -530,7 +530,7 @@ undo_filter_unfold :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// adjust indentation for unfold
 	lowest_indentation := tasks_lowest_indentation(idx, idx + data.count - 1)
-	for i in 0..<data.count {
+	for i in 0 ..< data.count {
 		child := app_task_filter(idx + i)
 		goal := child.indentation - lowest_indentation + task.indentation + 1
 		child.indentation = goal
@@ -539,10 +539,7 @@ undo_filter_unfold :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	task.filter_folded = false
 
-	output := Undo_Item_Filter_Fold {
-		data.filter_index,
-		data.count,
-	}
+	output := Undo_Item_Filter_Fold{data.filter_index, data.count}
 	undo_push(manager, undo_filter_fold, &output, size_of(Undo_Item_Filter_Fold))
 }
 
@@ -565,13 +562,13 @@ todool_toggle_folding :: proc(du: u32 = 0) {
 // push memory bits for a task
 task_push_unfold :: proc(task: ^Task) -> ^Undo_Item_Filter_Unfold {
 	root, _ := mem.alloc(
-		size_of(Undo_Item_Filter_Unfold) + size_of(int) * len(task.filter_children), 
+		size_of(Undo_Item_Filter_Unfold) + size_of(int) * len(task.filter_children),
 		mem.DEFAULT_ALIGNMENT,
 		context.temp_allocator,
 	)
 
 	// set root
-	data := cast(^Undo_Item_Filter_Unfold) root
+	data := cast(^Undo_Item_Filter_Unfold)root
 	data.filter_index = task.filter_index
 	data.count = len(task.filter_children)
 
@@ -588,10 +585,7 @@ task_toggle_folding :: proc(manager: ^Undo_Manager, task: ^Task) -> bool {
 			item := task_push_unfold(task)
 			undo_filter_unfold(manager, item)
 		} else {
-			item := Undo_Item_Filter_Fold {
-				task.filter_index,
-				len(task.filter_children),
-			}
+			item := Undo_Item_Filter_Fold{task.filter_index, len(task.filter_children)}
 
 			undo_filter_fold(manager, &item)
 		}
@@ -621,7 +615,7 @@ todool_insert_sibling :: proc(du: u32) {
 		app.task_tail = 0
 		task_push_undoable(manager, 0, "", -1)
 		return
-	} 
+	}
 
 	find_prev :: proc(visible_index: int) -> (res: int) {
 		res = -1
@@ -629,7 +623,7 @@ todool_insert_sibling :: proc(du: u32) {
 
 		for i := visible_index; i >= 0; i -= 1 {
 			task := app_task_filter(i)
-			
+
 			if task.indentation <= task_current.indentation {
 				res = i
 				return
@@ -645,7 +639,7 @@ todool_insert_sibling :: proc(du: u32) {
 
 		for i := visible_index + 1; i < len(app.pool.filter); i += 1 {
 			task := app_task_filter(i)
-			
+
 			if task.indentation <= task_current.indentation {
 				res = i
 				return
@@ -687,7 +681,7 @@ todool_insert_child :: proc(du: u32) {
 
 		// uppercase word
 		if !task_has_children(current_task) && options_uppercase_word() && ss_has_content(ss) {
-			item := Undo_String_Uppercased_Content { ss }
+			item := Undo_String_Uppercased_Content{ss}
 			undo_box_uppercased_content(manager, &item)
 		}
 
@@ -722,35 +716,45 @@ todool_mode_kanban :: proc(du: u32) {
 }
 
 Undo_Item_Shift_Slice :: struct {
-	total_low: int,
+	total_low:  int,
 	total_high: int,
 	// data following with pointers that should be reset to
 }
 
 // store the total region in undo
 undo_push_shift_slice :: proc(manager: ^Undo_Manager, low, high: int) {
-	output := Undo_Item_Shift_Slice { low, high }
+	output := Undo_Item_Shift_Slice{low, high}
 	count := high - low
 	assert(count > 0, "count invalid")
-	bytes := undo_push(manager, undo_shift_slice, &output, size_of(Undo_Item_Shift_Slice) + count * size_of(int))
+	bytes := undo_push(
+		manager,
+		undo_shift_slice,
+		&output,
+		size_of(Undo_Item_Shift_Slice) + count * size_of(int),
+	)
 
-	bytes_root := cast(^int) &bytes[size_of(Undo_Item_Shift_Slice)]
+	bytes_root := cast(^int)&bytes[size_of(Undo_Item_Shift_Slice)]
 	storage := mem.slice_ptr(bytes_root, count)
 	copy(storage, app.pool.filter[low:high])
 }
 
 // undo element slice region to something stored prior
 undo_shift_slice :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Shift_Slice) item
+	data := cast(^Undo_Item_Shift_Slice)item
 	count := data.total_high - data.total_low
 
 	// push before actually resetting data to a previous state
 	output := data^
-	bytes := undo_push(manager, undo_shift_slice, &output, size_of(Undo_Item_Shift_Slice) + count * size_of(int))
-	
+	bytes := undo_push(
+		manager,
+		undo_shift_slice,
+		&output,
+		size_of(Undo_Item_Shift_Slice) + count * size_of(int),
+	)
+
 	// save current data
 	{
-		bytes_root := cast(^int) &bytes[size_of(Undo_Item_Shift_Slice)]
+		bytes_root := cast(^int)&bytes[size_of(Undo_Item_Shift_Slice)]
 		storage := mem.slice_ptr(bytes_root, count)
 		copy(storage, app.pool.filter[data.total_low:data.total_high])
 	}
@@ -758,7 +762,7 @@ undo_shift_slice :: proc(manager: ^Undo_Manager, item: rawptr) {
 	// set to pushed data
 	{
 		bytes_root := uintptr(item) + size_of(Undo_Item_Shift_Slice)
-		storage := mem.slice_ptr(cast(^int) bytes_root, count)
+		storage := mem.slice_ptr(cast(^int)bytes_root, count)
 		copy(app.pool.filter[data.total_low:data.total_high], storage)
 	}
 }
@@ -774,7 +778,7 @@ shift_complex :: proc(manager: ^Undo_Manager, a, b: int) {
 	}
 
 	task_a := app_task_filter(a)
-	a_count := 1 
+	a_count := 1
 	if !task_a.filter_folded && task_has_children(task_a) {
 		a_count += len(task_a.filter_children)
 	}
@@ -804,19 +808,13 @@ shift_complex :: proc(manager: ^Undo_Manager, a, b: int) {
 	copy(temp, f[total_low:total_low + a_count])
 
 	// copy selection to a index
-	copy(
-		f[total_low:], 
-		f[middle:middle + b_count],
-	)
+	copy(f[total_low:], f[middle:middle + b_count])
 
 	// copy temp to proper region
-	copy(
-		f[total_low + b_count:], 
-		temp,
-	)
+	copy(f[total_low + b_count:], temp)
 
 	// animate tasks that have a changed index
-	for i in total_low..<total_high {
+	for i in total_low ..< total_high {
 		task := app_task_filter(i)
 
 		if task.filter_index != i {
@@ -856,7 +854,7 @@ todool_shift_up :: proc(du: u32) {
 
 		manager := mode_panel_manager_scoped()
 		task_head_tail_push(manager)
-		for i in low - 1..<high {
+		for i in low - 1 ..< high {
 			task_swap(manager, i, i + 1)
 		}
 
@@ -909,12 +907,12 @@ todool_select_all :: proc(du: u32) {
 
 Undo_Item_Int_Set :: struct {
 	value: ^int,
-	to: int,
+	to:    int,
 }
 
 undo_int_set :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Int_Set) item
-	output := Undo_Item_Int_Set { data.value, data.value^ }
+	data := cast(^Undo_Item_Int_Set)item
+	output := Undo_Item_Int_Set{data.value, data.value^}
 	data.value^ = data.to
 	undo_push(manager, undo_int_set, &output, size_of(Undo_Item_Int_Set))
 }
@@ -925,18 +923,18 @@ Undo_Item_Dirty_Decrease :: struct {}
 
 undo_dirty_increase :: proc(manager: ^Undo_Manager, item: rawptr) {
 	app.dirty += 1
-	output := Undo_Item_Dirty_Decrease {}
+	output := Undo_Item_Dirty_Decrease{}
 	undo_push(manager, undo_dirty_decrease, &output, size_of(Undo_Item_Dirty_Decrease))
 }
 
 undo_dirty_decrease :: proc(manager: ^Undo_Manager, item: rawptr) {
 	app.dirty -= 1
-	output := Undo_Item_Dirty_Increase {}
+	output := Undo_Item_Dirty_Increase{}
 	undo_push(manager, undo_dirty_increase, &output, size_of(Undo_Item_Dirty_Increase))
 }
 
 dirty_push :: proc(manager: ^Undo_Manager) {
-	item := Undo_Item_Dirty_Increase {}
+	item := Undo_Item_Dirty_Increase{}
 	undo_dirty_increase(manager, &item)
 }
 
@@ -946,7 +944,7 @@ Undo_Item_Task_Head_Tail :: struct {
 }
 
 undo_task_head_tail :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Head_Tail) item
+	data := cast(^Undo_Item_Task_Head_Tail)item
 	old_head := app.task_head
 	old_tail := app.task_tail
 	app.task_head = data.head
@@ -968,11 +966,11 @@ task_head_tail_push :: proc(manager: ^Undo_Manager) {
 
 Undo_Item_U8_XOR :: struct {
 	value: ^u8,
-	bit: u8,
+	bit:   u8,
 }
 
 undo_u8_xor :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_U8_XOR) item
+	data := cast(^Undo_Item_U8_XOR)item
 	data.value^ ~= data.bit
 	undo_push(manager, undo_u8_xor, item, size_of(Undo_Item_U8_XOR))
 }
@@ -980,7 +978,7 @@ undo_u8_xor :: proc(manager: ^Undo_Manager, item: rawptr) {
 u8_xor_push :: proc(manager: ^Undo_Manager, value: ^u8, bit: u8) {
 	item := Undo_Item_U8_XOR {
 		value = value,
-		bit = bit,
+		bit   = bit,
 	}
 	undo_u8_xor(manager, &item)
 }
@@ -996,7 +994,7 @@ todool_toggle_tag :: proc(du: u32) {
 		return
 	}
 	bit := u8(value)
-	
+
 	manager := mode_panel_manager_scoped()
 	task_head_tail_push(manager)
 
@@ -1015,8 +1013,8 @@ Undo_Item_Task_Swap :: struct {
 task_indentation_set_animate :: proc(manager: ^Undo_Manager, task: ^Task, set: int) {
 	item := Undo_Item_Task_Indentation_Set {
 		task = task,
-		set = task.indentation,
-	}	
+		set  = task.indentation,
+	}
 	undo_push(manager, undo_task_indentation_set, &item, size_of(Undo_Item_Task_Indentation_Set))
 
 	task.indentation = set
@@ -1025,10 +1023,10 @@ task_indentation_set_animate :: proc(manager: ^Undo_Manager, task: ^Task, set: i
 }
 
 undo_task_swap :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Swap) item
+	data := cast(^Undo_Item_Task_Swap)item
 	f := app.pool.filter
 	f[data.a], f[data.b] = f[data.b], f[data.a]
-	undo_push(manager, undo_task_swap, item, size_of(Undo_Item_Task_Swap))	
+	undo_push(manager, undo_task_swap, item, size_of(Undo_Item_Task_Swap))
 }
 
 // NOTE list index
@@ -1043,17 +1041,17 @@ task_swap_animation :: proc(list_index: int) {
 		task.top_offset = -SEPARATOR_SIZE * SCALE
 		// task.top_old = task.element.bounds.t
 		// task.top_offset = 0
- 	} else {
+	} else {
 		task.top_old = task.element.bounds.t
 		task.top_offset = 0
- 	}
+	}
 
 	element_animation_start(&task.element)
 }
 
 // swap with +1 / -1 offset 
 task_swap :: proc(manager: ^Undo_Manager, a, b: int) {
-	item := Undo_Item_Task_Swap { a, b }
+	item := Undo_Item_Task_Swap{a, b}
 	undo_task_swap(manager, &item)
 
 	// animate the thing when visible
@@ -1069,18 +1067,18 @@ Undo_Item_Bool_Toggle :: struct {
 
 // inverse bool set
 undo_bool_toggle :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Bool_Toggle) item
+	data := cast(^Undo_Item_Bool_Toggle)item
 	data.value^ = !data.value^
 	undo_push(manager, undo_bool_toggle, item, size_of(Undo_Item_Bool_Toggle))
 }
 
 Undo_Item_U8_Set :: struct {
 	value: ^u8,
-	to: u8,
+	to:    u8,
 }
 
 undo_u8_set :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_U8_Set) item
+	data := cast(^Undo_Item_U8_Set)item
 	old := data.value^
 	data.value^ = data.to
 	data.to = old
@@ -1089,18 +1087,15 @@ undo_u8_set :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 task_set_state_undoable :: proc(
-	manager: ^Undo_Manager, 
-	task: ^Task, 
+	manager: ^Undo_Manager,
+	task: ^Task,
 	goal: Task_State,
 	task_count: int,
 ) {
 	if manager == nil {
 		task.state = goal
 	} else {
-		item := Undo_Item_U8_Set {
-			cast(^u8) &task.state,
-			cast(u8) task.state,
-		}
+		item := Undo_Item_U8_Set{cast(^u8)&task.state, cast(u8)task.state}
 		undo_push(manager, undo_u8_set, &item, size_of(Undo_Item_U8_Set))
 		task.state_last = task.state
 		task.state = goal
@@ -1117,11 +1112,11 @@ task_set_state_undoable :: proc(
 
 Undo_Item_Task_Indentation_Set :: struct {
 	task: ^Task,
-	set: int,
+	set:  int,
 }
 
 undo_task_indentation_set :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Indentation_Set) item
+	data := cast(^Undo_Item_Task_Indentation_Set)item
 	old_indentation := data.task.indentation
 	data.task.indentation = data.set
 	data.task.indentation_smooth = f32(data.set)
@@ -1131,27 +1126,24 @@ undo_task_indentation_set :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 Undo_Item_Task_Remove_At :: struct {
 	filter_index: int,
-	list_index: int,
+	list_index:   int,
 }
 
 Undo_Item_Task_Insert_At :: struct {
 	filter_index: int,
-	list_index: int,
+	list_index:   int,
 }
 
 task_remove_at_index :: proc(manager: ^Undo_Manager, task: ^Task) {
-	item := Undo_Item_Task_Remove_At { task.filter_index, task.list_index }
+	item := Undo_Item_Task_Remove_At{task.filter_index, task.list_index}
 	undo_task_remove_at(manager, &item)
 }
 
 undo_task_remove_at :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Remove_At) item
-	
-	output := Undo_Item_Task_Insert_At {
-		data.filter_index,
-		data.list_index,
-	}
-	
+	data := cast(^Undo_Item_Task_Remove_At)item
+
+	output := Undo_Item_Task_Insert_At{data.filter_index, data.list_index}
+
 	task := app_task_list(data.list_index)
 	task.removed = true
 
@@ -1164,16 +1156,13 @@ undo_task_remove_at :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 undo_task_insert_at :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Insert_At) item
-	
+	data := cast(^Undo_Item_Task_Insert_At)item
+
 	task := app_task_list(data.list_index)
 	task.removed = false
 	inject_at(&app.pool.filter, data.filter_index, data.list_index)
 
-	output := Undo_Item_Task_Remove_At {
-		data.filter_index,
-		data.list_index,
-	}
+	output := Undo_Item_Task_Remove_At{data.filter_index, data.list_index}
 	undo_push(manager, undo_task_remove_at, &output, size_of(Undo_Item_Task_Remove_At))
 }
 
@@ -1186,26 +1175,27 @@ Undo_Item_Task_Pop :: struct {
 }
 
 undo_task_append :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Append) item
+	data := cast(^Undo_Item_Task_Append)item
 
-	task := app_task_list(data.list_index)
+	//TODO: Declared but not used.
+	// task := app_task_list(data.list_index)
 	append(&app.pool.filter, data.list_index)
 
-	output := Undo_Item_Task_Pop {}
+	output := Undo_Item_Task_Pop{}
 	undo_push(manager, undo_task_pop, &output, size_of(Undo_Item_Task_Pop))
 }
 
 undo_task_pop :: proc(manager: ^Undo_Manager, item: rawptr) {
 	task := app_task_filter(len(app.pool.filter) - 1)
 	task.removed = true
-	
+
 	// NOTE
 	// might need to clear children
 	// but techinically not possible to pop the last task that has visible children
 
 	// gather the popped element before
-	output := Undo_Item_Task_Append { task.list_index }
-	
+	output := Undo_Item_Task_Append{task.list_index}
+
 	pop(&app.pool.filter)
 	undo_push(manager, undo_task_append, &output, size_of(Undo_Item_Task_Append))
 }
@@ -1234,7 +1224,7 @@ Undo_Item_Task_Timestamp :: struct {
 }
 
 undo_task_timestamp :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Task_Timestamp) item
+	data := cast(^Undo_Item_Task_Timestamp)item
 	defer undo_push(manager, undo_task_timestamp, item, size_of(Undo_Item_Task_Timestamp))
 
 	task := data.task
@@ -1253,7 +1243,7 @@ undo_task_timestamp :: proc(manager: ^Undo_Manager, item: rawptr) {
 			task.box.tail = max(task.box.tail - TIMESTAMP_LENGTH - 1, 0)
 			window_repaint(app.window_main)
 			return
-		} 
+		}
 	} else {
 		if int(ss.length) + TIMESTAMP_LENGTH + 1 < SS_SIZE {
 			copy(ss.buf[TIMESTAMP_LENGTH + 1:], ss.buf[:])
@@ -1273,12 +1263,12 @@ undo_task_timestamp :: proc(manager: ^Undo_Manager, item: rawptr) {
 task_remove_selection :: proc(manager: ^Undo_Manager, move: bool) {
 	iter := lh_iter_init()
 	app.task_state_progression = .Update_Animated
-	
-	for i in 0..<iter.range {
+
+	for i in 0 ..< iter.range {
 		task := app_task_filter(iter.low)
 		archive_push(&sb.archive, ss_string(&task.box.ss)) // only valid
 
-		item := Undo_Item_Task_Remove_At { task.filter_index - i, task.list_index }
+		item := Undo_Item_Task_Remove_At{task.filter_index - i, task.list_index}
 		undo_task_remove_at(manager, &item)
 	}
 
@@ -1345,11 +1335,11 @@ todool_save :: proc(du: u32) {
 	}
 
 	force_dialog := du_bool(du)
-	
+
 	if force_dialog || len(app.last_save_location.buf) == 0 {
 		// output: cstring
 		default_path := gs_string_to_cstring(gs.pref_path)
-		file_patterns := [?]cstring { "*.todool" }
+		file_patterns := [?]cstring{"*.todool"}
 		output := tfd.save_file_dialog("Save", default_path, file_patterns[:], "")
 		gs_dt_start()
 		app.window_main.raise_next = true
@@ -1405,10 +1395,10 @@ todool_load :: proc(du: u32) {
 		default_path = gs_string_to_cstring(strings.to_string(app.last_save_location))
 	}
 
-	file_patterns := [?]cstring { "*.todool" }
+	file_patterns := [?]cstring{"*.todool"}
 	output := tfd.open_file_dialog("Open", default_path, file_patterns[:])
 	gs_dt_start()
-	
+
 	if app.window_main.fullscreened {
 		window_hide(app.window_main)
 		app.window_main.raise_next = true
@@ -1422,27 +1412,24 @@ todool_load :: proc(du: u32) {
 
 	// ask for save path after choosing the next "open" location
 	// check for canceling loading
-	app_save_maybe(
-		app.window_main,
-		proc() {
-			last_save_set(app.save_string)
-			file_path := strings.to_string(app.last_save_location)
-			file_data, ok := os.read_entire_file(file_path)
-			defer delete(file_data)
+	app_save_maybe(app.window_main, proc() {
+		last_save_set(app.save_string)
+		file_path := strings.to_string(app.last_save_location)
+		file_data, ok := os.read_entire_file(file_path)
+		defer delete(file_data)
 
-			if !ok {
-				log.infof("LOAD: File not found %s\n", file_path)
-				return
-			}
+		if !ok {
+			log.infof("LOAD: File not found %s\n", file_path)
+			return
+		}
 
-			err := load_all(file_data)
-			if err != nil {
-				log.info("LOAD: FAILED =", err)
-			}
+		err := load_all(file_data)
+		if err != nil {
+			log.info("LOAD: FAILED =", err)
+		}
 
-			window_repaint(app.window_main)
-		},
-	) 
+		window_repaint(app.window_main)
+	})
 }
 
 todool_toggle_bookmark :: proc(du: u32) {
@@ -1468,7 +1455,7 @@ todool_toggle_bookmark :: proc(du: u32) {
 element_find_first_text_box :: proc(parent: ^Element) -> ^Text_Box {
 	for child in parent.children {
 		if child.message_class == text_box_message {
-			return cast(^Text_Box) child
+			return cast(^Text_Box)child
 		}
 	}
 
@@ -1517,12 +1504,8 @@ todool_search :: proc(du: u32) {
 			// cut out selected word
 			ds: cutf8.Decode_State
 			low, high := box_low_and_high(task.box)
-			text, ok := cutf8.ds_string_selection(
-				&ds,
-				ss_string(&task.box.ss),
-				low, 
-				high,
-			)
+			//FIXME: Handle error.
+			text, _ := cutf8.ds_string_selection(&ds, ss_string(&task.box.ss), low, high)
 
 			ss_set_string(&box.ss, text)
 			search_update(text)
@@ -1530,7 +1513,7 @@ todool_search :: proc(du: u32) {
 
 		search.saved_box_head = task.box.head
 		search.saved_box_tail = task.box.tail
-	}		
+	}
 
 	element_message(box, .Box_Set_Caret, BOX_SELECT_ALL)
 }
@@ -1560,7 +1543,12 @@ todool_duplicate_line :: proc(du: u32) {
 	// temporarily copy and paste at the current location
 	copy_temp := copy_state_init(mem.Kilobyte, diff + 1, context.temp_allocator)
 	copy_state_copy_selection(&copy_temp, low, high)
-	insert_count := copy_state_paste_at(&copy_temp, manager, task.filter_index + 1, lowest_indentation)
+	insert_count := copy_state_paste_at(
+		&copy_temp,
+		manager,
+		task.filter_index + 1,
+		lowest_indentation,
+	)
 
 	window_repaint(app.window_main)
 
@@ -1577,7 +1565,7 @@ todool_copy_tasks :: proc(du: u32 = 0) {
 
 todool_cut_tasks :: proc(du: u32 = 0) {
 	if app_filter_empty() {
-		return 
+		return
 	}
 
 	app.last_was_task_copy = true
@@ -1603,7 +1591,7 @@ todool_paste_tasks :: proc(du: u32 = 0) {
 	if app.task_head == -1 || app.task_head == app.task_tail {
 		index, indentation := task_head_safe_index_indentation()
 		insert_count := copy_state_paste_at(&app.copy_state, manager, index + 1, indentation)
-		
+
 		app.task_head = max(app.task_head, 0) + insert_count
 		app.task_tail = max(app.task_head, 0)
 	} else {
@@ -1614,7 +1602,7 @@ todool_paste_tasks :: proc(du: u32 = 0) {
 		index, _ := task_head_safe_index_indentation()
 		index += 1
 		insert_count := copy_state_paste_at(&app.copy_state, manager, index, lowest_indentation)
-		
+
 		app.task_head += insert_count
 		app.task_tail = app.task_head
 	}
@@ -1625,7 +1613,7 @@ todool_paste_tasks :: proc(du: u32 = 0) {
 todool_paste_tasks_from_clipboard :: proc(du: u32) {
 	if clipboard_has_content() {
 		clipboard_text := clipboard_get_with_builder()
-		
+
 		// indentation
 		indentation_per_line := make([dynamic]u16, 0, 256, context.temp_allocator)
 
@@ -1643,9 +1631,9 @@ todool_paste_tasks_from_clipboard :: proc(du: u32) {
 		// have to make this work for non task case
 		task_index: int
 		indentation: int
-		
+
 		if app_filter_not_empty() {
-			low, high := task_low_and_high()
+			_, high := task_low_and_high()
 			highest_task := app_task_filter(high)
 			task_index = highest_task.filter_index + 1
 			indentation = highest_task.indentation
@@ -1656,7 +1644,12 @@ todool_paste_tasks_from_clipboard :: proc(du: u32) {
 		text := clipboard_text
 		for line in strings.split_lines_iterator(&text) {
 			off := indentation_per_line[line_index]
-			task_push_undoable(manager, indentation + int(off), strings.trim_space(line), task_index)
+			task_push_undoable(
+				manager,
+				indentation + int(off),
+				strings.trim_space(line),
+				task_index,
+			)
 			task_index += 1
 			line_index += 1
 		}
@@ -1683,9 +1676,9 @@ todool_tasks_to_uppercase :: proc(du: u32) {
 
 		for task in lh_iter_step(&iter) {
 			ss := &task.box.ss
-	
+
 			if ss_has_content(ss) {
-				item := Undo_String_Uppercased_Content { ss }
+				item := Undo_String_Uppercased_Content{ss}
 				undo_box_uppercased_content(manager, &item)
 			}
 		}
@@ -1702,9 +1695,9 @@ todool_tasks_to_lowercase :: proc(du: u32) {
 
 		for task in lh_iter_step(&iter) {
 			ss := &task.box.ss
-	
+
 			if ss_has_content(ss) {
-				item := Undo_String_Lowercased_Content { ss }
+				item := Undo_String_Lowercased_Content{ss}
 				undo_box_lowercased_content(manager, &item)
 			}
 		}
@@ -1714,20 +1707,14 @@ todool_tasks_to_lowercase :: proc(du: u32) {
 }
 
 todool_new_file :: proc(du: u32) {
-	app_save_maybe(
-		app.window_main, 
-		proc() {
-			tasks_load_reset()
-			last_save_set("")
-		},
-	)
+	app_save_maybe(app.window_main, proc() {
+		tasks_load_reset()
+		last_save_set("")
+	})
 }
 
 // do a callback with optional save dialog
-app_save_maybe :: proc(
-	window: ^Window, 
-	callback: proc(),
-) {
+app_save_maybe :: proc(window: ^Window, callback: proc()) {
 	handled: bool
 
 	if options_autosave() {
@@ -1735,23 +1722,15 @@ app_save_maybe :: proc(
 	} else if app.dirty != app.dirty_saved {
 		app.save_callback = callback
 
-		dialog := dialog_spawn(
-			window, 
-			proc(dialog: ^Dialog, result: string) {
+		_ = dialog_spawn(window, proc(dialog: ^Dialog, result: string) {
 				if dialog.result == .Default {
 					todool_save(COMBO_FALSE)
-				} 
+				}
 
 				if dialog.result != .Cancel {
 					app.save_callback()
 				}
-			},
-			300,
-			"Save progress?\n%l\n%B%b%C",
-			"Yes",
-			"No",
-			"Cancel",
-		)
+			}, 300, "Save progress?\n%l\n%B%b%C", "Yes", "No", "Cancel")
 
 		handled = true
 	}
@@ -1765,28 +1744,21 @@ app_save_maybe :: proc(
 app_save_close :: proc() -> (handled: bool) {
 	// ignore empty file saving
 	if app_filter_empty() {
-		return 
+		return
 	}
 
 	if options_autosave() {
 		todool_save(COMBO_FALSE)
 	} else if app.dirty != app.dirty_saved {
-		dialog := dialog_spawn(
-			app.window_main, 
-			proc(dialog: ^Dialog, result: string) {
+		//TODO: "dialog" declared but not used.
+		_ = dialog_spawn(app.window_main, proc(dialog: ^Dialog, result: string) {
 				if dialog.result == .Default {
 					todool_save(COMBO_FALSE)
 					window_try_quit(app.window_main, true)
 				} else if dialog.result != .Cancel {
 					window_try_quit(app.window_main, true)
 				}
-			},
-			300,
-			"Save progress?\n%l\n%B%b%C",
-			"Yes",
-			"No",
-			"Cancel",
-		)
+			}, 300, "Save progress?\n%l\n%B%b%C", "Yes", "No", "Cancel")
 
 		handled = true
 	}
@@ -1829,7 +1801,7 @@ todool_select_children :: proc(du: u32) {
 			}
 
 			app.task_head = index - 1
-		}		
+		}
 	} else {
 		app.task_head, app.task_tail = app.task_tail, app.task_head
 	}
@@ -1847,14 +1819,14 @@ todool_jump_nearby :: proc(du: u32) {
 
 	task_current := app_task_head()
 
-	for i in 0..<len(app.pool.filter) {
+	for i in 0 ..< len(app.pool.filter) {
 		index := ctrl ? (app.task_head - i - 1) : (i + app.task_head + 1)
 		// wrap negative
 		if index < 0 {
 			index = len(app.pool.filter) + index
 		}
 		task := app_task_filter(index % len(app.pool.filter))
-		
+
 		if task.state != task_current.state {
 			if task_head_tail_check_begin(shift) {
 				app.task_head = task.filter_index
@@ -1868,11 +1840,11 @@ todool_jump_nearby :: proc(du: u32) {
 
 Undo_Item_Sort_Indentation :: struct {
 	indentation: int,
-	from, to: int,
+	from, to:    int,
 }
 
 undo_sort_indentation :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Sort_Indentation) item
+	data := cast(^Undo_Item_Sort_Indentation)item
 
 	// NOTE we're sorting list indices!
 	count := (data.to - data.from) + 1
@@ -1898,7 +1870,7 @@ undo_sort_indentation :: proc(manager: ^Undo_Manager, item: rawptr) {
 	sort_list := make([]int, count, context.temp_allocator)
 	sort_index: int
 
-	for filter_index in data.from..<data.to + 1 {
+	for filter_index in data.from ..< data.to + 1 {
 		task := app_task_filter(filter_index)
 
 		if data.indentation == task.indentation {
@@ -1912,16 +1884,21 @@ undo_sort_indentation :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// save last 
 	{
-		output := Undo_Item_Sort_Reset { data.from, data.to }
-		bytes := undo_push(manager, undo_sort_reset, &output, size_of(Undo_Item_Sort_Reset) + count * size_of(int))
-		bytes_root := cast(^int) &bytes[size_of(Undo_Item_Sort_Reset)]
+		output := Undo_Item_Sort_Reset{data.from, data.to}
+		bytes := undo_push(
+			manager,
+			undo_sort_reset,
+			&output,
+			size_of(Undo_Item_Sort_Reset) + count * size_of(int),
+		)
+		bytes_root := cast(^int)&bytes[size_of(Undo_Item_Sort_Reset)]
 		storage := mem.slice_ptr(bytes_root, count)
 		copy(storage, app.pool.filter[data.from:data.to + 1])
 	}
 
 	// push back sorted results and insert their children with correct offsets
 	offset: int
-	for i in 0..<sort_index {
+	for i in 0 ..< sort_index {
 		real_index := data.from + i + offset
 		goal := sort_list[i]
 		f[real_index] = goal
@@ -1930,7 +1907,7 @@ undo_sort_indentation :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 		if !task.filter_folded && task_has_children(task) {
 			// push children back properly
-			for j in 0..<len(task.filter_children) {
+			for j in 0 ..< len(task.filter_children) {
 				goal = task.filter_children[j]
 				f[real_index + j + 1] = goal
 				task_swap_animation(goal)
@@ -1948,9 +1925,9 @@ Undo_Item_Sort_Reset :: struct {
 
 // TODO duplicate code
 undo_sort_reset :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Sort_Reset) item
+	data := cast(^Undo_Item_Sort_Reset)item
 
-	bytes_root := cast(^int) (uintptr(item) + size_of(Undo_Item_Sort_Reset))
+	bytes_root := cast(^int)(uintptr(item) + size_of(Undo_Item_Sort_Reset))
 	count := data.to - data.from + 1
 
 	// revert to unsorted data
@@ -1958,11 +1935,7 @@ undo_sort_reset :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// NOTE safe?
 	task := app_task_filter(data.from)
-	out := Undo_Item_Sort_Indentation {
-		task.indentation,
-		data.from,
-		data.to,
-	}
+	out := Undo_Item_Sort_Indentation{task.indentation, data.from, data.to}
 	undo_push(manager, undo_sort_indentation, &out, size_of(Undo_Item_Sort_Indentation))
 }
 
@@ -1984,7 +1957,9 @@ todool_sort_locals :: proc(du: u32) {
 		to = len(app.pool.filter) - 1
 	} else {
 		from = task_current.visible_parent.filter_index + 1
-		to = task_current.visible_parent.filter_index + len(task_current.visible_parent.filter_children)
+		to =
+			task_current.visible_parent.filter_index +
+			len(task_current.visible_parent.filter_children)
 
 		// skip invalid 
 		if from == -1 || to == -1 {
@@ -1994,14 +1969,15 @@ todool_sort_locals :: proc(du: u32) {
 
 	manager := mode_panel_manager_scoped()
 	task_head_tail_push(manager)
-	
-	item := Undo_Item_Sort_Indentation { task_current.indentation, from, to }
+
+	item := Undo_Item_Sort_Indentation{task_current.indentation, from, to}
 	undo_sort_indentation(manager, &item)
 	window_repaint(app.window_main)
 }
 
 todool_scale :: proc(du: u32) {
-	amt := f32(du_pos_neg(du)) * 0.1
+	//TODO: Declared but not used.
+	// amt := f32(du_pos_neg(du)) * 0.1
 	factor := task_scale_factoring(du_pos_neg(du))
 	scaling_set(SCALE, TASK_SCALE * factor)
 
@@ -2059,7 +2035,8 @@ vim_visual_move_left :: proc(du: u32) {
 	}
 
 	switch app.mmpp.mode {
-		case .Kanban: {
+	case .Kanban:
+		{
 			current := app_task_head()
 			b := current.element.bounds
 			closest_task: ^Task
@@ -2075,8 +2052,9 @@ vim_visual_move_left :: proc(du: u32) {
 			for index in list {
 				task := app_task_list(index)
 				if task.element.bounds.r < b.l {
-					dist_x := task.element.bounds.r - b.l 
-					dist_y := (task.element.bounds.t + rect_height_halfed(task.element.bounds)) - middle
+					dist_x := task.element.bounds.r - b.l
+					dist_y :=
+						(task.element.bounds.t + rect_height_halfed(task.element.bounds)) - middle
 					temp := f32(dist_x * dist_x) + f32(dist_y * dist_y)
 
 					if temp < closest_distance {
@@ -2090,12 +2068,13 @@ vim_visual_move_left :: proc(du: u32) {
 				app.task_head = closest_task.filter_index
 				app.task_tail = closest_task.filter_index
 				window_repaint(app.window_main)
-				
+
 				vim_visual_reptition_set(current, 1)
 			}
 		}
 
-		case .List: {
+	case .List:
+		{
 			todool_move_down(COMBO_EMPTY)
 		}
 	}
@@ -2107,7 +2086,8 @@ vim_visual_move_right :: proc(du: u32) {
 	}
 
 	switch app.mmpp.mode {
-		case .Kanban: {
+	case .Kanban:
+		{
 			current := app_task_head()
 			b := current.element.bounds
 			closest_task: ^Task
@@ -2123,8 +2103,9 @@ vim_visual_move_right :: proc(du: u32) {
 			for index in list {
 				task := app_task_list(index)
 				if b.r < task.element.bounds.r {
-					dist_x := task.element.bounds.l - b.r 
-					dist_y := (task.element.bounds.t + rect_height_halfed(task.element.bounds)) - middle
+					dist_x := task.element.bounds.l - b.r
+					dist_y :=
+						(task.element.bounds.t + rect_height_halfed(task.element.bounds)) - middle
 					temp := f32(dist_x * dist_x) + f32(dist_y * dist_y)
 
 					if temp < closest_distance {
@@ -2143,7 +2124,8 @@ vim_visual_move_right :: proc(du: u32) {
 			}
 		}
 
-		case .List: {
+	case .List:
+		{
 			todool_move_up(COMBO_EMPTY)
 		}
 	}
@@ -2179,7 +2161,7 @@ vim_visual_reptition_check :: proc(task: ^Task, direction: int) -> bool {
 			// 	cam.ax.animating = true
 			// 	cam.ax.direction = CAM_CENTER
 			// 	cam.ax.goal = int(vim.rep_cam_x)
-				
+
 			// 	cam.ay.animating = true
 			// 	cam.ay.direction = CAM_CENTER
 			// 	cam.ay.goal = int(vim.rep_cam_y)
@@ -2199,7 +2181,7 @@ vim_visual_reptition_check :: proc(task: ^Task, direction: int) -> bool {
 
 todool_toggle_progressbars :: proc(du: u32) {
 	check := sb.options.progressbar.show
-	
+
 	if check != nil {
 		checkbox_set(check, !check.state)
 		app.progressbars_goal = check.state ? 1 : 0
@@ -2279,14 +2261,14 @@ todool_focus_parent :: proc(du: u32) {
 	}
 
 	task := app_task_head()
-	
+
 	if app.focus.root != nil {
 		// check if its the same parent, if so then remove focus
 		if app.focus.root == task || task.visible_parent == app.focus.root {
 			app.focus.root = nil
 			return
-		} 
-	} 
+		}
+	}
 
 	// insert parent if non parent
 	if !task_has_children(task) {

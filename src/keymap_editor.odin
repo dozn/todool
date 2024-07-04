@@ -1,45 +1,43 @@
 package src
 
-import "core:strconv"
-import "core:strings"
-import "core:math/rand"
+import dll "core:container/intrusive/list"
 import "core:fmt"
 import "core:mem"
-import dll "core:container/intrusive/list"
+import "core:strconv"
+import "core:strings"
 import "fuzz"
 
 Keymap_Editor :: struct {
-	window: ^Window,
-	panel: ^Panel,
-
-	grids: [4]^Static_Grid,
+	window:       ^Window,
+	panel:        ^Panel,
+	grids:        [4]^Static_Grid,
 	// grid_keep_in_frame: Maybe(^Static_Grid),
 
 	// interactables
 	issue_update: ^Static_Grid,
-	stealer: ^KE_Stealer,
-
-	menu: struct {
-		combo: ^Combo_Node, // for menu setting
-		sub: ^Panel,
-		line: ^Static_Line,
-		box: ^Text_Box,
+	stealer:      ^KE_Stealer,
+	menu:         struct {
+		combo:  ^Combo_Node, // for menu setting
+		sub:    ^Panel,
+		line:   ^Static_Line,
+		box:    ^Text_Box,
 		keymap: ^Keymap,
 	},
-
-	um: Undo_Manager,
+	um:           Undo_Manager,
 }
 ke: Keymap_Editor
 
 keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	window := cast(^Window) element
+	window := cast(^Window)element
 
 	#partial switch msg {
-		case .Key_Combination: {
-			combo := (cast(^string) dp)^
+	case .Key_Combination:
+		{
+			combo := (cast(^string)dp)^
 
 			switch combo {
-				case "1"..<"5": {
+			case "1" ..< "5":
+				{
 					if window.menu_filter {
 						return 0
 					}
@@ -53,7 +51,8 @@ keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, d
 					return 1
 				}
 
-				case "escape": {
+			case "escape":
+				{
 					if ke.menu.box != nil {
 						if ke.menu.box.ss.length == 0 {
 							menu_close(window)
@@ -70,7 +69,8 @@ keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, d
 					}
 				}
 
-				case "return": {
+			case "return":
+				{
 					if ke.menu.box != nil && ke.menu.sub != nil {
 						found: ^Element
 						children := panel_children(ke.menu.sub)
@@ -84,7 +84,7 @@ keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, d
 						}
 
 						if found != nil {
-							cmd := cast(^KE_Command) found
+							cmd := cast(^KE_Command)found
 							ke_command_build(cmd)
 							return 1
 						}
@@ -98,14 +98,16 @@ keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, d
 			}
 		}
 
-		case .Unicode_Insertion: {
+	case .Unicode_Insertion:
+		{
 			if ke.menu.box != nil {
 				element_focus(window, ke.menu.box)
 				element_message(ke.menu.box, msg, di, dp)
 			}
 		}
 
-		case .Destroy: {
+	case .Destroy:
+		{
 			undo_manager_destroy(&ke.um)
 			ke = {}
 		}
@@ -137,8 +139,9 @@ keymap_editor_spawn :: proc(du: u32) {
 
 		// reset node pointers
 		if ke.issue_update != nil {
-			children := ke.issue_update.children
-			keymap := cast(^Keymap) ke.issue_update.data
+			//TODO: Declared but not used.
+			// children := ke.issue_update.children
+			keymap := cast(^Keymap)ke.issue_update.data
 
 			// update combo lines and offsets
 			index: int
@@ -155,7 +158,7 @@ keymap_editor_spawn :: proc(du: u32) {
 
 	ke.panel = panel_init(
 		&ke.window.element,
-		{ .Panel_Default_Background, .Panel_Scroll_Vertical },
+		{.Panel_Default_Background, .Panel_Scroll_Vertical},
 		5,
 		5,
 	)
@@ -174,25 +177,28 @@ keymap_editor_spawn :: proc(du: u32) {
 
 KE_Stealer :: struct {
 	using element: Element,
-	builder: strings.Builder,
+	builder:       strings.Builder,
 }
 
 ke_stealer_init :: proc(
 	parent: ^Element,
 	flags: Element_Flags,
 	text: string,
-) -> (res: ^KE_Stealer) {
-	res = element_init(KE_Stealer, parent, flags, ke_stealer_message, context.allocator)  	
+) -> (
+	res: ^KE_Stealer,
+) {
+	res = element_init(KE_Stealer, parent, flags, ke_stealer_message, context.allocator)
 	res.builder = strings.builder_make(0, 64, context.allocator)
 	strings.write_string(&res.builder, text)
 	return
 }
 
 ke_stealer_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	stealer := cast(^KE_Stealer) element
+	stealer := cast(^KE_Stealer)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			// pressed := element.window.pressed == element
 			// hovered := element.window.hovered == element
@@ -209,8 +215,9 @@ ke_stealer_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			render_string_rect(target, element.bounds, text)
 		}
 
-		case .Key_Combination: {
-			combo := (cast(^string) dp)^
+	case .Key_Combination:
+		{
+			combo := (cast(^string)dp)^
 			b := &stealer.builder
 
 			// cancel on double escape
@@ -225,27 +232,32 @@ ke_stealer_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return 1
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			fcs_element(element)
 			text := strings.to_string(stealer.builder)
 			width := max(int(50 * SCALE), string_width(text) + int(TEXT_MARGIN_HORIZONTAL * SCALE))
 			return width
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element) + int(TEXT_MARGIN_VERTICAL * SCALE)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 
-		case .Clicked: {
+	case .Clicked:
+		{
 			element_focus(element.window, element)
 			element_repaint(element)
 		}
 
-		case .Destroy: {
+	case .Destroy:
+		{
 			delete(stealer.builder.buf)
 		}
 	}
@@ -254,13 +266,19 @@ ke_stealer_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 }
 
 // check wether the combo_node needs its conflict removed
-keymap_editor_check_conflict_removal :: proc(keymap: ^Keymap, combo_node: ^Combo_Node, check: string, ignore_check: bool) {
+keymap_editor_check_conflict_removal :: proc(
+	keymap: ^Keymap,
+	combo_node: ^Combo_Node,
+	check: string,
+	ignore_check: bool,
+) {
 	// check if last conflict can be resolved
 	if combo_node.conflict != nil {
 		conflict_check := combo_node.conflict
-		
+
 		// remove the current conflict if the new name differs
-		if ignore_check || string(combo_node.conflict.combo[:combo_node.conflict.combo_index]) != check {
+		if ignore_check ||
+		   string(combo_node.conflict.combo[:combo_node.conflict.combo_index]) != check {
 			combo_node.conflict = nil
 		}
 
@@ -296,7 +314,7 @@ keymap_editor_check_conflicts :: proc(keymap: ^Keymap, skip: ^Combo_Node, check:
 		iter := dll.iterator_head(keymap.conflict_list, Combo_Conflict, "node")
 		for node in dll.iterate_next(&iter) {
 			c1 := string(node.combo[:node.combo_index])
-			
+
 			if c1 == check {
 				skip.conflict = node
 				node.count += 1
@@ -324,7 +342,7 @@ keymap_editor_check_conflicts :: proc(keymap: ^Keymap, skip: ^Combo_Node, check:
 		skip.conflict = conflict
 		mem.copy(&conflict.combo[0], raw_data(check), len(check))
 		conflict.combo_index = u8(len(check))
-		conflict.color = color_hsluv_golden_rand(nil, 1, 0.75)
+		conflict.color = color_hsluv_golden_rand(1, 0.75)
 		conflict.count = 2
 		dll.push_back(&keymap.conflict_list, conflict)
 	}
@@ -332,32 +350,42 @@ keymap_editor_check_conflicts :: proc(keymap: ^Keymap, skip: ^Combo_Node, check:
 
 KE_Button_Combo :: struct {
 	using element: Element,
-	node: ^Combo_Node,
+	node:          ^Combo_Node,
 }
 
 KE_Button_Command :: struct {
 	using element: Element,
-	node: ^Combo_Node,
+	node:          ^Combo_Node,
 }
 
 ke_button_combo_init :: proc(
-	parent: ^Element, 
-	flags: Element_Flags, 
+	parent: ^Element,
+	flags: Element_Flags,
 	node: ^Combo_Node,
-) -> (res: ^KE_Button_Combo) {
+) -> (
+	res: ^KE_Button_Combo,
+) {
 	res = element_init(KE_Button_Combo, parent, flags, ke_button_combo_message, context.allocator)
 	res.node = node
 	return
 }
 
 ke_button_command_init :: proc(
-	parent: ^Element, 
-	flags: Element_Flags, 
+	parent: ^Element,
+	flags: Element_Flags,
 	node: ^Combo_Node,
-) -> (res: ^KE_Button_Command) {
-	res = element_init(KE_Button_Command, parent, flags, ke_button_command_message, context.allocator)
+) -> (
+	res: ^KE_Button_Command,
+) {
+	res = element_init(
+		KE_Button_Command,
+		parent,
+		flags,
+		ke_button_command_message,
+		context.allocator,
+	)
 	res.node = node
-	return	
+	return
 }
 
 // get text per mode
@@ -366,20 +394,25 @@ ke_button_combo_text :: proc(button: ^KE_Button_Combo) -> string {
 }
 
 ke_button_command_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^KE_Button_Combo) element
+	button := cast(^KE_Button_Combo)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
 			text_color := hovered || pressed ? theme.text_default : theme.text_blank
 
 			// find assigned color
-			keymap := cast(^Keymap) button.parent.parent.data
+			keymap := cast(^Keymap)button.parent.parent.data
 			if button.node.command_index != -1 {
 				command := keymap_get_command(keymap, button.node.command_index)
-				render_rect(target, rect_padding(element.bounds, rect_xxyy(LINE_WIDTH, 0)), command.color)
+				render_rect(
+					target,
+					rect_padding(element.bounds, rect_xxyy(LINE_WIDTH, 0)),
+					command.color,
+				)
 			}
 
 			if hovered || pressed {
@@ -401,25 +434,29 @@ ke_button_command_message :: proc(element: ^Element, msg: Message, di: int, dp: 
 			}
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			element_repaint(element)
 		}
 
-		case .Clicked: {
-			keymap := cast(^Keymap) button.parent.parent.data
+	case .Clicked:
+		{
+			keymap := cast(^Keymap)button.parent.parent.data
 			keymap_editor_menu_command(keymap, button.node)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			fcs_element(element)
-			
+
 			w: int
 			if button.node.command_index != -1 {
-				keymap := cast(^Keymap) button.parent.parent.data
+				keymap := cast(^Keymap)button.parent.parent.data
 				command := keymap_get_command(keymap, button.node.command_index)
 				w = string_width(command.name) + int(TEXT_MARGIN_HORIZONTAL * SCALE)
 			}
@@ -428,21 +465,24 @@ ke_button_command_message :: proc(element: ^Element, msg: Message, di: int, dp: 
 			return int(width)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element) + int(TEXT_MARGIN_VERTICAL * SCALE)
 		}
 
-		case .Key_Combination: {
+	case .Key_Combination:
+		{
 			key_combination_check_click(element, dp)
 		}
 
-		case .Hover_Info: {
-			keymap := cast(^Keymap) button.parent.parent.data
+	case .Hover_Info:
+		{
+			keymap := cast(^Keymap)button.parent.parent.data
 
 			if button.node.command_index != -1 {
 				command := keymap_get_command(keymap, button.node.command_index)
-				res := cast(^string) dp
-				res^ = command.comment 
+				res := cast(^string)dp
+				res^ = command.comment
 			}
 		}
 	}
@@ -451,10 +491,11 @@ ke_button_command_message :: proc(element: ^Element, msg: Message, di: int, dp: 
 }
 
 ke_button_combo_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^KE_Button_Combo) element
+	button := cast(^KE_Button_Combo)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
@@ -488,19 +529,19 @@ ke_button_combo_message :: proc(element: ^Element, msg: Message, di: int, dp: ra
 			render_string_rect(target, bounds, text)
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			element_repaint(element)
 		}
 
-		case .Clicked: {
-			ke.menu.line = cast(^Static_Line) button.parent
+	case .Clicked:
+		{
+			ke.menu.line = cast(^Static_Line)button.parent
 			combo_name := string(button.node.combo[:button.node.combo_index])
 
-			dialog_spawn(
-				ke.window,
-				proc(dialog: ^Dialog, result: string) {
+			dialog_spawn(ke.window, proc(dialog: ^Dialog, result: string) {
 					if dialog.result == .Default {
-						keymap := cast(^Keymap) ke.menu.line.parent.data
+						keymap := cast(^Keymap)ke.menu.line.parent.data
 						node := &keymap.combos[ke.menu.line.index]
 
 						mem.copy(&node.combo[0], raw_data(result), len(result))
@@ -509,53 +550,51 @@ ke_button_combo_message :: proc(element: ^Element, msg: Message, di: int, dp: ra
 					}
 
 					ke.menu.line = nil
-				},
-				300,
-				"Press a Key Combination\n%x\n%B%C",
-				combo_name,
-				"Accept",
-				"Cancel",
-			)
+				}, 300, "Press a Key Combination\n%x\n%B%C", combo_name, "Accept", "Cancel")
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			fcs_element(element)
 			text := ke_button_combo_text(button)
 			width := max(int(50 * SCALE), string_width(text) + int(TEXT_MARGIN_HORIZONTAL * SCALE))
 			return int(width)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element) + int(TEXT_MARGIN_VERTICAL * SCALE)
 		}
 
-		case .Key_Combination: {
+	case .Key_Combination:
+		{
 			key_combination_check_click(element, dp)
 		}
-	}	
+	}
 
 	return 0
 }
 
 // NOTE this has to be the same as the init code
 keymap_editor_update_combo_data :: proc(line: ^Static_Line, combo: ^Combo_Node) {
-	b1 := cast(^KE_Button_Combo) line.children[0]
+	b1 := cast(^KE_Button_Combo)line.children[0]
 	b1.node = combo
-	b2 := cast(^KE_Button_Command) line.children[1]
+	b2 := cast(^KE_Button_Command)line.children[1]
 	b2.node = combo
-	b3 := cast(^Button) line.children[2]
+	b3 := cast(^Button)line.children[2]
 	strings.builder_reset(&b3.builder)
 	fmt.sbprintf(&b3.builder, "0x%2x", combo.du)
 	// b4 := cast(^Button) line.children[3]
 }
 
 keymap_editor_remove_call :: proc(line: ^Static_Line) {
-	grid := cast(^Static_Grid) line.parent
-	keymap := cast(^Keymap) grid.data
+	grid := cast(^Static_Grid)line.parent
+	keymap := cast(^Keymap)grid.data
 
 	if line.index != -1 && len(keymap.combos) != 0 {
 		node := &keymap.combos[line.index]
@@ -565,14 +604,20 @@ keymap_editor_remove_call :: proc(line: ^Static_Line) {
 		ke.issue_update = grid
 		element_repaint(line)
 		element_destroy(line)
-	} 
+	}
 }
 
-keymap_editor_static_line_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	sl := cast(^Static_Line) element
+keymap_editor_static_line_message :: proc(
+	element: ^Element,
+	msg: Message,
+	di: int,
+	dp: rawptr,
+) -> int {
+	sl := cast(^Static_Line)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 
 			// highlight second lines
@@ -585,7 +630,8 @@ keymap_editor_static_line_message :: proc(element: ^Element, msg: Message, di: i
 			}
 		}
 
-		case .Right_Down: {
+	case .Right_Down:
+		{
 			keymap_editor_menu_combo(sl)
 			return 1
 		}
@@ -594,8 +640,13 @@ keymap_editor_static_line_message :: proc(element: ^Element, msg: Message, di: i
 	return 0
 }
 
-keymap_editor_static_grid_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	grid := cast(^Static_Grid) element
+keymap_editor_static_grid_message :: proc(
+	element: ^Element,
+	msg: Message,
+	di: int,
+	dp: rawptr,
+) -> int {
+	grid := cast(^Static_Grid)element
 
 	if msg == .Paint_Recursive {
 		target := element.window.target
@@ -604,9 +655,9 @@ keymap_editor_static_grid_message :: proc(element: ^Element, msg: Message, di: i
 
 		height := element_message(element, .Get_Height)
 		r := rect_wh(
-			element.bounds.l - LINE_WIDTH / 2, 
-			element.bounds.t + LINE_WIDTH + grid.cell_height, 
-			LINE_WIDTH, 
+			element.bounds.l - LINE_WIDTH / 2,
+			element.bounds.t + LINE_WIDTH + grid.cell_height,
+			LINE_WIDTH,
 			height - LINE_WIDTH * 2,
 		)
 
@@ -620,17 +671,17 @@ keymap_editor_static_grid_message :: proc(element: ^Element, msg: Message, di: i
 		if grid.hide_cells != nil && grid.hide_cells^ {
 			assert(len(element.children) > 0)
 			element_message(element.children[0], msg, di, dp)
-		}  else {
+		} else {
 			for child in element.children {
 				render_element_clipped(target, child)
 			}
-	
-			keymap := cast(^Keymap) grid.data
+
+			keymap := cast(^Keymap)grid.data
 
 			// when non hidden, draw collision lines
 			if !dll.is_empty(&keymap.conflict_list) {
 				render_push_clip(target, ke.window.element.bounds)
-				iter := dll.iterator_head(keymap.conflict_list, Combo_Conflict, "node") 
+				iter := dll.iterator_head(keymap.conflict_list, Combo_Conflict, "node")
 				width := int(14 * SCALE)
 				gap := int(4 * SCALE)
 				offset := width + gap
@@ -645,24 +696,24 @@ keymap_editor_static_grid_message :: proc(element: ^Element, msg: Message, di: i
 					{
 						index: int
 						count: int
-						for line, offset in static_grid_real_lines_iter(grid, &index, &count) {
-							combo_node := &keymap.combos[offset]
-							
+						for line, _offset in static_grid_real_lines_iter(grid, &index, &count) {
+							combo_node := &keymap.combos[_offset]
+
 							if node == combo_node.conflict {
-								r := bounds
-								r.t = line.bounds.t + rect_height_halfed(line.bounds)
-								r.b = r.t + LINE_WIDTH 
-								render_rect(target, r, node.color)
-								rect_inf_push(&sum, r)
+								r_bounds := bounds
+								r_bounds.t = line.bounds.t + rect_height_halfed(line.bounds)
+								r_bounds.b = r_bounds.t + LINE_WIDTH
+								render_rect(target, r_bounds, node.color)
+								rect_inf_push(&sum, r_bounds)
 							}
 						}
 					}
 
 					// thin line
 					{
-						r := sum
-						r.r = r.l + LINE_WIDTH
-						render_rect(target, r, node.color)
+						r_sum := sum
+						r_sum.r = r_sum.l + LINE_WIDTH
+						render_rect(target, r_sum, node.color)
 					}
 
 					offset += width + gap
@@ -676,12 +727,18 @@ keymap_editor_static_grid_message :: proc(element: ^Element, msg: Message, di: i
 	return 0
 }
 
-keymap_editor_push_keymap :: proc(keymap: ^Keymap, header: string, folded: bool) -> (grid: ^Static_Grid) {
-	for cmd in &keymap.commands {
-		cmd.color = color_hsluv_golden_rand(nil, 0.5, 0.75)
+keymap_editor_push_keymap :: proc(
+	keymap: ^Keymap,
+	header: string,
+	folded: bool,
+) -> (
+	grid: ^Static_Grid,
+) {
+	for &cmd in &keymap.commands {
+		cmd.color = color_hsluv_golden_rand(0.5, 0.75)
 	}
 
-	cell_sizes := [?]int { 250, 250, 100 }
+	cell_sizes := [?]int{250, 250, 100}
 	grid = static_grid_init(ke.panel, {}, cell_sizes[:], DEFAULT_FONT_SIZE + TEXT_MARGIN_VERTICAL)
 	grid.data = keymap
 	grid.message_user = keymap_editor_static_grid_message
@@ -693,9 +750,9 @@ keymap_editor_push_keymap :: proc(keymap: ^Keymap, header: string, folded: bool)
 	// line description
 	{
 		p := static_line_init(grid, &grid.cell_sizes, -1)
-		label_init(p, { .Label_Center }, "Combination")
-		label_init(p, { .Label_Center }, "Command")
-		label_init(p, { .Label_Center }, "Modifiers")
+		label_init(p, {.Label_Center}, "Combination")
+		label_init(p, {.Label_Center}, "Command")
+		label_init(p, {.Label_Center}, "Modifiers")
 	}
 
 	line_count: int
@@ -707,36 +764,30 @@ keymap_editor_push_keymap :: proc(keymap: ^Keymap, header: string, folded: bool)
 	return
 }
 
-keymap_editor_line_append :: proc(
-	grid: ^Static_Grid, 
-	node: ^Combo_Node,
-	line_count: int,
-	) {
+keymap_editor_line_append :: proc(grid: ^Static_Grid, node: ^Combo_Node, line_count: int) {
 	p := static_line_init(grid, &grid.cell_sizes, line_count)
 	p.message_user = keymap_editor_static_line_message
 
 	// c1 := strings.string_from_ptr(&node.combo[0], int(node.combo_index))
-	b1 := ke_button_combo_init(p, {}, node)
-	b2 := ke_button_command_init(p, {}, node)
+	//TODO: Declared but not used.
+	// b1 := ke_button_combo_init(p, {}, node)
+	//TODO: Declared but not used.
+	// b2 := ke_button_command_init(p, {}, node)
 
 	b3 := button_init(p, {}, "")
 
 	if node != nil {
-		fmt.sbprintf(&b3.builder, "0x%2x", node.du)  	
+		fmt.sbprintf(&b3.builder, "0x%2x", node.du)
 	}
 }
 
 KE_Command :: struct {
 	using element: Element,
-	index: int,
-	is_current: bool,
+	index:         int,
+	is_current:    bool,
 }
 
-ke_command_init :: proc(
-	parent: ^Element, 
-	index: int, 
-	is_current: bool,
-) -> (res: ^KE_Command) {
+ke_command_init :: proc(parent: ^Element, index: int, is_current: bool) -> (res: ^KE_Command) {
 	res = element_init(KE_Command, parent, {}, ke_command_message, context.allocator)
 	res.index = index
 	res.is_current = is_current
@@ -752,14 +803,15 @@ ke_command_build :: proc(cmd: ^KE_Command) {
 }
 
 ke_command_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	cmd := cast(^KE_Command) element
+	cmd := cast(^KE_Command)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
-			
+
 			builder := strings.builder_make(0, 64, context.temp_allocator)
 			strings.write_int(&builder, int(cmd.index))
 			strings.write_string(&builder, ". ")
@@ -782,20 +834,24 @@ ke_command_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			render_string_rect(target, bounds, strings.to_string(builder))
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			element_repaint(element)
 		}
 
-		// set combo command name
-		case .Clicked: {
+	// set combo command name
+	case .Clicked:
+		{
 			ke_command_build(cmd)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element) + int(TEXT_MARGIN_VERTICAL * SCALE)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 	}
@@ -803,13 +859,10 @@ ke_command_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 	return 0
 }
 
-keymap_editor_menu_command :: proc(
-	keymap: ^Keymap,
-	combo: ^Combo_Node,
-) {
+keymap_editor_menu_command :: proc(keymap: ^Keymap, combo: ^Combo_Node) {
 	menu_close(ke.window)
 
-	menu := menu_init(ke.window, { .Panel_Expand }, -1, true)
+	menu := menu_init(ke.window, {.Panel_Expand}, -1, true)
 	defer menu_show_position(menu)
 	menu.x = ke.window.cursor_x
 	menu.y = ke.window.cursor_y
@@ -818,21 +871,21 @@ keymap_editor_menu_command :: proc(
 	p := menu.panel
 	p.background_index = 1
 	p.gap = 5
-	
+
 	ke.menu.combo = combo
 	offset: int
 	is_current: bool
 
 	ke.menu.keymap = keymap
-	ke.menu.box = text_box_init(p, { .HF })
+	ke.menu.box = text_box_init(p, {.HF})
 	ke.menu.box.um = &ke.um
 	ke.menu.box.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		box := cast(^Text_Box) element
-		
+		box := cast(^Text_Box)element
+
 		if msg == .Value_Changed {
 			pattern := ss_string(&box.ss)
 			children := panel_children(ke.menu.sub)
-			
+
 			if pattern == "" {
 				// unhide all children
 				for child in children {
@@ -842,7 +895,7 @@ keymap_editor_menu_command :: proc(
 				// hide all children that arent fuzzd
 				for child in children {
 					if child.message_class == ke_command_message {
-						cmd := cast(^KE_Command) child
+						cmd := cast(^KE_Command)child
 						command := keymap_get_command(ke.menu.keymap, cmd.index)
 						res, ok := fuzz.match(command.name, pattern)
 						hide := res.score > 10 && ok
@@ -859,11 +912,15 @@ keymap_editor_menu_command :: proc(
 	undo_manager_reset(&ke.um)
 	element_focus(ke.window, ke.menu.box)
 
-	ke.menu.sub = panel_init(p, { .HF, .VF, .Panel_Expand, .Panel_Scroll_Vertical, .Panel_Default_Background }, 5)
+	ke.menu.sub = panel_init(
+		p,
+		{.HF, .VF, .Panel_Expand, .Panel_Scroll_Vertical, .Panel_Default_Background},
+		5,
+	)
 	ke.menu.sub.background_index = 2
 
 	current_index := int(combo.command_index)
-	for i in 0..<len(keymap.commands) {
+	for i in 0 ..< len(keymap.commands) {
 		is_current = i == current_index
 		ke_command_init(ke.menu.sub, i, is_current)
 		offset += 1
@@ -878,23 +935,23 @@ keymap_editor_menu_combo :: proc(line: ^Static_Line) {
 
 	p := menu.panel
 	p.shadow = true
-	p.flags |= { .Panel_Expand }
+	p.flags |= {.Panel_Expand}
 
 	ke.menu.line = line
 
 	mbc(p, "Add", proc() {
-		grid := cast(^Static_Grid) ke.menu.line.parent
-		keymap := cast(^Keymap) grid.data
-		
-		index := ke.menu.line.index + 1
-		inject_at(&keymap.combos, index, Combo_Node { command_index = -1 })
+			grid := cast(^Static_Grid)ke.menu.line.parent
+			keymap := cast(^Keymap)grid.data
 
-		keymap_editor_line_append(grid, nil, 0)
-		ke.issue_update = grid
-		menu_close(ke.window)
-	}, .PLUS)
+			index := ke.menu.line.index + 1
+			inject_at(&keymap.combos, index, Combo_Node{command_index = -1})
+
+			keymap_editor_line_append(grid, nil, 0)
+			ke.issue_update = grid
+			menu_close(ke.window)
+		}, .PLUS)
 	mbc(p, "Remove", proc() {
-		keymap_editor_remove_call(ke.menu.line)
-		menu_close(ke.window)
-	}, .CANCEL)
+			keymap_editor_remove_call(ke.menu.line)
+			menu_close(ke.window)
+		}, .CANCEL)
 }

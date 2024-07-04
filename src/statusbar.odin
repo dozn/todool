@@ -1,20 +1,17 @@
 package src
 
+import "core:fmt"
 import "core:reflect"
 import "core:strings"
-import "core:fmt"
 
 Statusbar :: struct {
-	stat: ^Element,
-	label_info: ^Label,
-
-	task_panel: ^Panel,
+	stat:             ^Element,
+	label_info:       ^Label,
+	task_panel:       ^Panel,
 	label_task_state: [Task_State]^Label,
-
 	label_task_count: ^Label,
-
-	vim_panel: ^Panel,
-	vim_mode_label: ^Vim_Label,
+	vim_panel:        ^Panel,
+	vim_mode_label:   ^Vim_Label,
 	// label_vim_buffer: ^Label,
 }
 statusbar: Statusbar
@@ -23,20 +20,19 @@ Vim_Label :: struct {
 	using element: Element,
 }
 
-vim_label_init :: proc(
-	parent: ^Element,
-	flags: Element_Flags,
-) -> (res: ^Vim_Label) {
+vim_label_init :: proc(parent: ^Element, flags: Element_Flags) -> (res: ^Vim_Label) {
 	res = element_init(Vim_Label, parent, flags, vim_label_message, context.allocator)
 	return
 }
 
 vim_label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	v := cast(^Vim_Label)	element
+	//TODO: Declared but not used.
+	// v := cast(^Vim_Label)element
 	text := vim.insert_mode ? "-- INSERT --" : "NORMAL"
-	
+
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			fcs_element(element)
 			fcs_ahv()
@@ -44,12 +40,14 @@ vim_label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 			render_string_rect(target, element.bounds, text)
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			fcs_element(element)
 			return int(string_width(text))
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element)
 		}
 	}
@@ -57,47 +55,49 @@ vim_label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 	return 0
 }
 
-statusbar_init :: proc(using statusbar: ^Statusbar, parent: ^Element) {
-	stat = element_init(Element, parent, {}, statusbar_message, context.allocator)
-	label_info = label_init(stat, { .Label_Center })
+statusbar_init :: proc(statusbar: ^Statusbar, parent: ^Element) {
+	statusbar.stat = element_init(Element, parent, {}, statusbar_message, context.allocator)
+	statusbar.label_info = label_init(statusbar.stat, {.Label_Center})
 
-	task_panel = panel_init(stat, { .HF, .Panel_Horizontal }, 5, 5)
-	task_panel.color = &theme.panel[1]
-	task_panel.rounded = true
-	
-	for i in 0..<len(Task_State) {
-		label_task_state[Task_State(i)] = label_init(task_panel, {})
+	statusbar.task_panel = panel_init(statusbar.stat, {.HF, .Panel_Horizontal}, 5, 5)
+	statusbar.task_panel.color = &theme.panel[1]
+	statusbar.task_panel.rounded = true
+
+	for i in 0 ..< len(Task_State) {
+		statusbar.label_task_state[Task_State(i)] = label_init(statusbar.task_panel, {})
 	}
-	
-	label_task_state[.Normal].color = &theme.text_default
-	label_task_state[.Done].color = &theme.text_good
-	label_task_state[.Canceled].color = &theme.text_bad
 
-	spacer_init(task_panel, {}, 2, DEFAULT_FONT_SIZE, .Full, true)
+	statusbar.label_task_state[.Normal].color = &theme.text_default
+	statusbar.label_task_state[.Done].color = &theme.text_good
+	statusbar.label_task_state[.Canceled].color = &theme.text_bad
 
-	label_task_count = label_init(task_panel, {})
+	spacer_init(statusbar.task_panel, {}, 2, DEFAULT_FONT_SIZE, .Full, true)
 
-	vim_panel = panel_init(stat, { .HF, .Panel_Horizontal }, 5, 5)
-	vim_panel.color = &theme.text_good
-	vim_panel.rounded = true
-	vim_mode_label = vim_label_init(vim_panel, {})
+	statusbar.label_task_count = label_init(statusbar.task_panel, {})
+
+	statusbar.vim_panel = panel_init(statusbar.stat, {.HF, .Panel_Horizontal}, 5, 5)
+	statusbar.vim_panel.color = &theme.text_good
+	statusbar.vim_panel.rounded = true
+	statusbar.vim_mode_label = vim_label_init(statusbar.vim_panel, {})
 }
 
 statusbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			render_rect(target, element.bounds, theme.background[2])
 		}
 
-		case .Layout: {
+	case .Layout:
+		{
 			bounds := element.bounds
 			bounds = rect_margin(bounds, int(TEXT_PADDING * SCALE))
 
 			// custom layout based on data
 			for child in element.children {
 				w := element_message(child, .Get_Width)
-				
+
 				if .HF in child.flags {
 					// right
 					element_move(child, rect_cut_right(&bounds, w))
@@ -105,7 +105,7 @@ statusbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 				} else {
 					element_move(child, rect_cut_left(&bounds, w))
 					bounds.l += int(TEXT_PADDING * SCALE)
-				} 
+				}
 			}
 		}
 	}
@@ -113,7 +113,7 @@ statusbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 	return 0
 }
 
-statusbar_update :: proc(using statusbar: ^Statusbar) {
+statusbar_update :: proc(statusbar: ^Statusbar) {
 	// update checkbox if hidden by key command
 	// {
 	// 	checkbox := &sb.options.checkbox_hide_statusbar
@@ -122,15 +122,15 @@ statusbar_update :: proc(using statusbar: ^Statusbar) {
 	// 	}
 	// }
 
-	if .Hide in stat.flags {
+	if .Hide in statusbar.stat.flags {
 		return
 	}
 
-	element_hide(vim_panel, !options_vim_use())
+	element_hide(statusbar.vim_panel, !options_vim_use())
 
 	// info
 	{
-		b := &label_info.builder
+		b := &statusbar.label_info.builder
 		strings.builder_reset(b)
 
 		if app.task_head == -1 {
@@ -176,7 +176,7 @@ statusbar_update :: proc(using statusbar: ^Statusbar) {
 
 	// tasks
 	for state, i in Task_State {
-		label := label_task_state[state]
+		label := statusbar.label_task_state[state]
 		b := &label.builder
 		strings.builder_reset(b)
 		strings.write_string(b, task_names[i])
@@ -200,8 +200,8 @@ statusbar_update :: proc(using statusbar: ^Statusbar) {
 			}
 		}
 		total += hidden
-		
-		b := &label_task_count.builder
+
+		b := &statusbar.label_task_count.builder
 		strings.builder_reset(b)
 
 		when POOL_DEBUG {

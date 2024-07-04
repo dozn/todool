@@ -1,8 +1,5 @@
 package src
 
-import "core:runtime"
-import "core:fmt"
-import "core:log"
 import "core:mem"
 
 // TODO multiple managers and 1 active only
@@ -14,8 +11,8 @@ Undo_State :: enum {
 }
 
 Undo_Manager :: struct {
-	undo: [dynamic]byte,
-	redo: [dynamic]byte,
+	undo:  [dynamic]byte,
+	redo:  [dynamic]byte,
 	state: Undo_State,
 }
 
@@ -40,21 +37,21 @@ Undo_Callback :: proc(manager: ^Undo_Manager, item: rawptr)
 
 // footer used to describe the item region coming before this footer in bytes
 Undo_Item_Footer :: struct {
-	callback: Undo_Callback, // callback that will be called on invoke
+	callback:   Undo_Callback, // callback that will be called on invoke
 	byte_count: int, // item byte count
-	group_end: bool, // wether this item means the end of undo steps
+	group_end:  bool, // wether this item means the end of undo steps
 }
 
 // push an item with its size and a callback
 undo_push :: proc(
-	manager: ^Undo_Manager, 
+	manager: ^Undo_Manager,
 	callback: Undo_Callback,
-	item: rawptr, 
+	item: rawptr,
 	item_bytes: int,
 ) -> []byte {
 	stack := manager.state == .Undoing ? &manager.redo : &manager.undo
 	footer := Undo_Item_Footer {
-		callback = callback,
+		callback   = callback,
 		// TODO align?
 		byte_count = item_bytes,
 	}
@@ -70,19 +67,19 @@ undo_push :: proc(
 		clear(&manager.redo)
 	}
 
-	return mem.slice_ptr(cast(^byte) root, item_bytes)
+	return mem.slice_ptr(cast(^byte)root, item_bytes)
 }
 
 // set group_end to true
 undo_group_end :: proc(manager: ^Undo_Manager) -> bool {
 	assert(manager.state == .Normal)
 	stack := &manager.undo
-	
+
 	if len(stack) == 0 {
 		return false
 	}
-	
-	footer := cast(^Undo_Item_Footer) &stack[len(stack) - size_of(Undo_Item_Footer)]
+
+	footer := cast(^Undo_Item_Footer)&stack[len(stack) - size_of(Undo_Item_Footer)]
 	footer.group_end = true
 	return true
 }
@@ -95,12 +92,12 @@ undo_group_continue :: proc(manager: ^Undo_Manager) -> bool {
 
 	assert(manager.state == .Normal)
 	stack := &manager.undo
-	
+
 	if len(stack) == 0 {
 		return false
 	}
-	
-	footer := cast(^Undo_Item_Footer) &stack[len(stack) - size_of(Undo_Item_Footer)]
+
+	footer := cast(^Undo_Item_Footer)&stack[len(stack) - size_of(Undo_Item_Footer)]
 	footer.group_end = false
 	return true
 }
@@ -122,10 +119,10 @@ undo_invoke :: proc(manager: ^Undo_Manager, redo: bool) {
 	count: int
 	for len(stack) != 0 {
 		old_length := len(stack)
-		footer := cast(^Undo_Item_Footer) &stack[old_length - size_of(Undo_Item_Footer)]
+		footer := cast(^Undo_Item_Footer)&stack[old_length - size_of(Undo_Item_Footer)]
 
 		if !first && footer.group_end {
-			break	
+			break
 		}
 		first = false
 
@@ -137,9 +134,9 @@ undo_invoke :: proc(manager: ^Undo_Manager, redo: bool) {
 
 	// set oposite stack latest footer to group_end = true
 	{
-		stack := redo ? &manager.undo : &manager.redo
-		assert(len(stack) != 0)
-		footer := cast(^Undo_Item_Footer) &stack[len(stack) - size_of(Undo_Item_Footer)]
+		_stack := redo ? &manager.undo : &manager.redo
+		assert(len(_stack) != 0)
+		footer := cast(^Undo_Item_Footer)&_stack[len(_stack) - size_of(Undo_Item_Footer)]
 		footer.group_end = true
 	}
 

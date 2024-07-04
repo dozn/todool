@@ -1,28 +1,22 @@
 package src
 
-import "core:fmt"
-import "core:math"
-import "core:math/rand"
-
 GRAVITY :: 9.81
 BOOKMARK_SPLITS :: 8
 
 Bookmark_State :: struct {
 	current_index: int,
-	rows: [dynamic]^Task,
-	alpha: f32,
+	rows:          [dynamic]^Task,
+	alpha:         f32,
 }
 bs: Bookmark_State
 
 bookmark_state_init :: proc() {
-	using bs
-	current_index = -1
-	rows = make([dynamic]^Task, 0, 32)
+	bs.current_index = -1
+	bs.rows = make([dynamic]^Task, 0, 32)
 }
 
 bookmark_state_destroy :: proc() {
-	using bs
-	delete(rows)
+	delete(bs.rows)
 }
 
 bookmark_nearest_index :: proc(backward: bool) -> int {
@@ -30,7 +24,8 @@ bookmark_nearest_index :: proc(backward: bool) -> int {
 	if app_filter_not_empty() {
 		// look for anything higher than the current index
 		filter_index := app_task_head().filter_index
-		found: bool
+		//TODO: Declared but not used.
+		// found: bool
 
 		if backward {
 			// backward
@@ -47,7 +42,7 @@ bookmark_nearest_index :: proc(backward: bool) -> int {
 				}
 			}
 		}
-	}	
+	}
 
 	return -1
 }
@@ -60,7 +55,7 @@ bookmark_advance :: proc(backward: bool) {
 
 	if bs.current_index == -1 {
 		nearest := bookmark_nearest_index(backward)
-		
+
 		if nearest != -1 {
 			bs.current_index = nearest
 			return
@@ -102,9 +97,9 @@ bookmarks_render_connections :: proc(target: ^Render_Target, clip: RectI) {
 	for task in bs.rows {
 		alpha := (count == goal ? 0.5 : 0.25) * bs.alpha
 		color := color_alpha(theme.text_default, alpha)
-		
+
 		x, y := rect_center(task.button_bookmark.bounds)
-		p := [2]f32 { x, y }
+		p := [2]f32{x, y}
 
 		if p_last != {} {
 			render_line(target, p_last, p, color)
@@ -121,11 +116,6 @@ bookmark_alpha_animate :: proc() -> bool {
 
 bookmark_alpha_update :: proc() {
 	if bookmark_alpha_animate() {
-		animate_to(
-			&bs.alpha,
-			0,
-			0.25,
-			0.01,
-		)
+		animate_to(&bs.alpha, 0, 0.25, 0.01)
 	}
 }

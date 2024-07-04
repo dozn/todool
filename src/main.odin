@@ -1,24 +1,10 @@
 package src
 
-import "core:runtime"
-import "core:math/bits"
-import "core:image"
-import "core:image/png"
-import "core:os"
-import "core:encoding/json"
-import "core:mem"
-import "core:math"
-import "core:time"
-import "core:strings"
-import "core:fmt"
+import "base:intrinsics"
 import "core:log"
 import "core:math/rand"
-import "core:unicode"
-import "core:thread"
-import "core:intrinsics"
-import sdl "vendor:sdl2"
-import "cutf8"
-import "btrie"
+import "core:os"
+import "core:strings"
 
 SHOW_FPS :: false
 POOL_DEBUG :: false
@@ -34,6 +20,10 @@ main :: proc() {
 	gs_init()
 	context.logger = gs.logger
 	context.allocator = gs_allocator()
+	seed := intrinsics.read_cycle_counter()
+	//TODO: i64 -> u64 conversion...
+	r := rand.create(u64(seed))
+	context.random_generator = rand.default_random_generator(&r)
 
 	theme_presets_init()
 	app = app_init()
@@ -75,7 +65,7 @@ main :: proc() {
 			keymap_clear_combos(&app.window_main.keymap_box)
 			keymap_clear_combos(&app.keymap_vim_normal)
 			keymap_clear_combos(&app.keymap_vim_insert)
-			
+
 			keymap_push_todool_combos(&app.window_main.keymap_custom)
 			keymap_push_box_combos(&app.window_main.keymap_box)
 			keymap_push_vim_normal_combos(&app.keymap_vim_normal)
@@ -94,21 +84,27 @@ main :: proc() {
 		// add_shortcuts(window)
 		menu_split, menu_bar := todool_menu_bar(&window.element)
 		app.task_menu_bar = menu_bar
-		panel := panel_init(menu_split, { .Panel_Horizontal, .Tab_Movement_Allowed })
+		panel := panel_init(menu_split, {.Panel_Horizontal, .Tab_Movement_Allowed})
 		statusbar_init(&statusbar, menu_split)
 		sidebar_panel_init(panel)
 
 		{
-			rect := window.rect
-			split := split_pane_init(panel, { .Split_Pane_Hidable, .VF, .HF, .Tab_Movement_Allowed }, 300, 300)
+			//TODO: Declared but not used.
+			// rect := window.rect
+			split := split_pane_init(
+				panel,
+				{.Split_Pane_Hidable, .VF, .HF, .Tab_Movement_Allowed},
+				300,
+				300,
+			)
 			split.pixel_based = true
 			sb.split = split
-		}	
+		}
 
 		sidebar_enum_panel_init(sb.split)
 		task_panel_init(sb.split)
 
-		goto_init(window) 
+		goto_init(window)
 	}
 
 	{
@@ -159,8 +155,10 @@ main_update :: proc(window: ^Window) {
 	task_check_parent_states(&app.um_task)
 
 	switch app.task_state_progression {
-		case .Idle: {}
-		case .Update_Instant: {
+	case .Idle:
+		{}
+	case .Update_Instant:
+		{
 			for index in app.pool.filter {
 				task := app_task_list(index)
 
@@ -169,7 +167,8 @@ main_update :: proc(window: ^Window) {
 				}
 			}
 		}
-		case .Update_Animated: {
+	case .Update_Animated:
+		{
 			for index in app.pool.filter {
 				task := app_task_list(index)
 
@@ -217,7 +216,9 @@ main_update :: proc(window: ^Window) {
 	// line changed
 	if app.old_task_head != app.task_head || app.old_task_tail != app.task_tail {
 		// call box changes immediatly when leaving task head / tail 
-		if app_filter_not_empty() && app.old_task_head != -1 && app.old_task_head < len(app.pool.filter) {
+		if app_filter_not_empty() &&
+		   app.old_task_head != -1 &&
+		   app.old_task_head < len(app.pool.filter) {
 			cam := mode_panel_cam()
 
 			mode_panel_cam_freehand_off(cam)
@@ -249,7 +250,8 @@ main_update :: proc(window: ^Window) {
 	if app_filter_not_empty() && app.focus.root != nil {
 		app_focus_bounds()
 
-		if !(app.focus.start <= app.task_head && app.task_head < app.focus.end) || !task_has_children(app.focus.root) {
+		if !(app.focus.start <= app.task_head && app.task_head < app.focus.end) ||
+		   !task_has_children(app.focus.root) {
 			app.focus.root = nil
 		}
 	}
@@ -262,13 +264,15 @@ main_update :: proc(window: ^Window) {
 }
 
 window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	window := cast(^Window) element
+	window := cast(^Window)element
 
 	#partial switch msg {
-		case .Key_Combination: {
-			handled := true
-			combo := (cast(^string) dp)^
-	
+	case .Key_Combination:
+		{
+			//TODO: Declared but not used.
+			// handled := true
+			combo := (cast(^string)dp)^
+
 			if window_focused_shown(window) || window.dialog != nil {
 				return 0
 			}
@@ -278,7 +282,7 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 					if main_box_key_combination(window, msg, di, dp) == 1 {
 						return 1
 					}
-	
+
 					// allow unicode insertion
 					if keymap_combo_execute(&app.keymap_vim_insert, combo) {
 						return 1
@@ -303,7 +307,8 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 			return 0
 		}
 
-		case .Unicode_Insertion: {
+	case .Unicode_Insertion:
+		{
 			if window_focused_shown(window) || window.dialog != nil {
 				return 0
 			}
@@ -315,7 +320,13 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 				if res == 1 {
 					cam := mode_panel_cam()
 					mode_panel_cam_freehand_off(cam)
-					mode_panel_cam_bounds_check_x(cam, app.caret.rect.l, app.caret.rect.r, false, true)
+					mode_panel_cam_bounds_check_x(
+						cam,
+						app.caret.rect.l,
+						app.caret.rect.r,
+						false,
+						true,
+					)
 					mode_panel_cam_bounds_check_y(cam, app.caret.rect.t, app.caret.rect.b, true)
 					app.task_tail = app.task_head
 				}
@@ -323,15 +334,18 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 			}
 		}
 
-		case .Window_Close_Interrupt: {
+	case .Window_Close_Interrupt:
+		{
 			return int(app_save_close())
 		}
 
-		case .Window_Close: {
+	case .Window_Close:
+		{
 			gs_destroy_all_windows()
 		}
 
-		case .Dropped_Files: {
+	case .Dropped_Files:
+		{
 			if app_filter_empty() {
 				return 0
 			}
@@ -352,7 +366,7 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 				window_drop_init(window)
 				for file_path in window_drop_iter(window) {
 					handle := image_load_push(file_path)
-					
+
 					if handle != nil {
 						// find task by mouse intersection
 						task := app_task_head()
@@ -399,10 +413,16 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 								defer delete(content)
 
 								if ok {
-									had_imports |= pattern_load_content_simple(manager, string(content), result, task_indentation, &task_insert_offset)
+									had_imports |= pattern_load_content_simple(
+										manager,
+										string(content),
+										result,
+										task_indentation,
+										&task_insert_offset,
+									)
 								}
 							}
-				
+
 							if had_imports {
 								task_head_tail_push(manager)
 								undo_group_end(manager)
@@ -422,4 +442,4 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 	}
 
 	return 0
-} 
+}

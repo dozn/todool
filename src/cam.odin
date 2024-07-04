@@ -1,19 +1,14 @@
 package src
 
-import "core:fmt"
-import "core:log"
-import "core:math"
-import "core:strings"
+import "base:intrinsics"
 import "core:math/rand"
-import "core:math/ease"
-import "core:intrinsics"
 
 CAM_CENTER :: 100
 
 Pan_Camera_Animation :: struct {
 	animating: bool,
 	direction: int,
-	goal: int,
+	goal:      int,
 }
 
 Cam_Check_Type :: enum {
@@ -22,21 +17,19 @@ Cam_Check_Type :: enum {
 }
 
 Pan_Camera :: struct {
-	start_x, start_y: int, // start of drag
-	offset_x, offset_y: f32,
-	margin_x, margin_y: int,
+	start_x, start_y:             int, // start of drag
+	offset_x, offset_y:           f32,
+	margin_x, margin_y:           int,
+	freehand:                     bool, // disables auto centering while panning
 
-	freehand: bool, // disables auto centering while panning
-	
 	// check state
-	check_next_index: int,
-	check_next_type: Cam_Check_Type,
-
-	ay: Pan_Camera_Animation,
-	ax: Pan_Camera_Animation,
+	check_next_index:             int,
+	check_next_type:              Cam_Check_Type,
+	ay:                           Pan_Camera_Animation,
+	ax:                           Pan_Camera_Animation,
 
 	// screenshake, running on power mode
-	screenshake_counter: f32,
+	screenshake_counter:          f32,
 	screenshake_x, screenshake_y: f32,
 }
 
@@ -46,13 +39,13 @@ cam_check :: proc(cam: ^Pan_Camera, type: Cam_Check_Type, frames := int(1)) {
 }
 
 // update lifetime
-cam_update_screenshake :: proc(using cam: ^Pan_Camera, update: bool) {
+cam_update_screenshake :: proc(cam: ^Pan_Camera, update: bool) {
 	if !pm_screenshake_use() || !pm_show() {
-		screenshake_x = 0
-		screenshake_y = 0
-		screenshake_counter = 0
+		cam.screenshake_x = 0
+		cam.screenshake_y = 0
+		cam.screenshake_counter = 0
 		return
-	} 
+	}
 
 	if update {
 		// unit range nums
@@ -60,30 +53,38 @@ cam_update_screenshake :: proc(using cam: ^Pan_Camera, update: bool) {
 		y := (rand.float32() * 2 - 1)
 		shake := pm_screenshake_amount() // skake amount in px
 		lifetime_opt := pm_screenshake_lifetime()
-		screenshake_x = x * max(shake - screenshake_counter * shake * 2 * lifetime_opt, 0)
-		screenshake_y = y * max(shake - screenshake_counter * shake * 2 * lifetime_opt, 0)
-		screenshake_counter += gs.dt
+		cam.screenshake_x = x * max(shake - cam.screenshake_counter * shake * 2 * lifetime_opt, 0)
+		cam.screenshake_y = y * max(shake - cam.screenshake_counter * shake * 2 * lifetime_opt, 0)
+		cam.screenshake_counter += gs.dt
 	} else {
-		screenshake_x = 0
-		screenshake_y = 0
-		screenshake_counter = 0
+		cam.screenshake_x = 0
+		cam.screenshake_y = 0
+		cam.screenshake_counter = 0
 	}
 }
 
-cam_update_check :: proc(using cam: ^Pan_Camera) {
+cam_update_check :: proc(cam: ^Pan_Camera) {
 	if cam.check_next_index >= 0 {
 		cam.check_next_index -= 1
 
 		if cam.check_next_index == 0 {
 			mode_panel_cam_freehand_off(cam)
-			
+
 			switch cam.check_next_type {
-				case .Bounds: {
-					mode_panel_cam_bounds_check_x(cam, app.caret.rect.l, app.caret.rect.r, false, true)
+			case .Bounds:
+				{
+					mode_panel_cam_bounds_check_x(
+						cam,
+						app.caret.rect.l,
+						app.caret.rect.r,
+						false,
+						true,
+					)
 					mode_panel_cam_bounds_check_y(cam, app.caret.rect.t, app.caret.rect.b, true)
 				}
 
-				case .Centered: {
+			case .Centered:
+				{
 					cam_center_by_height_state(cam, app.mmpp.bounds, app.caret.rect.t)
 					// fmt.eprintln(app.mmpp.bounds, app.caret.rect)
 				}
@@ -133,21 +134,14 @@ cam_animate :: proc(cam: ^Pan_Camera, x: bool) -> bool {
 	a := x ? &cam.ax : &cam.ay
 	off := x ? &cam.offset_x : &cam.offset_y
 	lerp := x ? &app.caret.lerp_speed_x : &app.caret.lerp_speed_y
-	using a
 
-	if cam.freehand || !animating {
+	if cam.freehand || !a.animating {
 		return false
 	}
 
-	real_goal := direction == CAM_CENTER ? f32(goal) : off^ + f32(direction * goal)
+	real_goal := a.direction == CAM_CENTER ? f32(a.goal) : off^ + f32(a.direction * a.goal)
 	// fmt.eprintln("real_goal", x ? "x" : "y", direction == 0, real_goal, off^, direction)
-	res := animate_to_state(
-		&animating,
-		off,
-		real_goal,
-		1 + lerp^,
-		1,
-	)
+	res := animate_to_state(&a.animating, off, real_goal, 1 + lerp^, 1)
 
 	scrollbar_position_set(app.custom_split.vscrollbar, f32(-cam.offset_y))
 	scrollbar_position_set(app.custom_split.hscrollbar, f32(-cam.offset_x))
@@ -167,19 +161,22 @@ cam_bounds_check_y :: proc(
 	focus: RectI,
 	to_top: int,
 	to_bottom: int,
-) -> (goal: int, direction: int) {
+) -> (
+	goal: int,
+	direction: int,
+) {
 	if cam.margin_y * 2 > rect_height(focus) {
 		return
 	}
 
 	if to_top < focus.t + cam.margin_y {
 		goal = focus.t - to_top + cam.margin_y
-	
+
 		if goal != 0 {
 			direction = 1
 			return
 		}
-	} 
+	}
 
 	if to_bottom > focus.b - cam.margin_y {
 		goal = to_bottom - focus.b + cam.margin_y
@@ -197,7 +194,10 @@ cam_bounds_check_x :: proc(
 	focus: RectI,
 	to_left: int,
 	to_right: int,
-) -> (goal: int, direction: int) {
+) -> (
+	goal: int,
+	direction: int,
+) {
 	if cam.margin_x * 2 >= rect_width(focus) {
 		return
 	}
@@ -209,11 +209,11 @@ cam_bounds_check_x :: proc(
 			direction = 1
 			return
 		}
-	} 
+	}
 
 	if to_right >= focus.r - cam.margin_x {
 		goal = to_right - focus.r + cam.margin_x
-		
+
 		if goal != 0 {
 			direction = -1
 		}
@@ -227,7 +227,7 @@ mode_panel_cam_bounds_check_y :: proc(
 	cam: ^Pan_Camera,
 	to_top: int,
 	to_bottom: int,
-	use_task: bool, // use task boundary
+	use_task: bool,// use task boundary
 ) {
 	if cam.freehand {
 		return
@@ -272,7 +272,8 @@ mode_panel_cam_bounds_check_x :: proc(
 	to_right := to_right
 
 	switch app.mmpp.mode {
-		case .List: {
+	case .List:
+		{
 			if app.task_head != -1 {
 				t := app_task_head()
 
@@ -293,12 +294,13 @@ mode_panel_cam_bounds_check_x :: proc(
 			goal, direction = cam_bounds_check_x(cam, app.mmpp.bounds, to_left, to_right)
 		}
 
-		case .Kanban: {
+	case .Kanban:
+		{
 			// find indent 0 task and get its rect
 			t: ^Task
 			if app.task_head != -1 && use_kanban {
 				index := app.task_head
-				
+
 				for t == nil || (t.indentation != 0 && index >= 0) {
 					t = app_task_filter(index)
 					index -= 1
@@ -310,12 +312,12 @@ mode_panel_cam_bounds_check_x :: proc(
 				if rect_width(t.kanban_rect) < rect_width(app.mmpp.bounds) - cam.margin_x * 2 {
 					to_left = t.kanban_rect.l
 					to_right = t.kanban_rect.r
-				} 
+				}
 			}
 
 			goal, direction = cam_bounds_check_x(cam, app.mmpp.bounds, to_left, to_right)
 		}
-	} 
+	}
 
 	// fmt.eprintln(goal, direction)
 
@@ -334,12 +336,7 @@ mode_panel_cam_bounds_check_x :: proc(
 	}
 }
 
-cam_center_by_height_state :: proc(
-	cam: ^Pan_Camera,
-	focus: RectI,
-	y: int,
-	max_height: int = -1,
-) {
+cam_center_by_height_state :: proc(cam: ^Pan_Camera, focus: RectI, y: int, max_height: int = -1) {
 	if cam.freehand {
 		return
 	}
@@ -348,7 +345,8 @@ cam_center_by_height_state :: proc(
 	offset_goal: int
 
 	switch app.mmpp.mode {
-		case .List: {
+	case .List:
+		{
 			// center by view height max height is lower than view height
 			if max_height != -1 && max_height < height {
 				offset_goal = (height / 2 - max_height / 2)
@@ -358,7 +356,8 @@ cam_center_by_height_state :: proc(
 			}
 		}
 
-		case .Kanban: {
+	case .Kanban:
+		{
 			// center by view height max height is lower than view height
 			if max_height != -1 && max_height < height {
 				offset_goal = (height / 2 - max_height / 2)

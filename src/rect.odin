@@ -6,23 +6,13 @@ RectF :: struct {
 	l, r, t, b: f32,
 }
 
-RECT_LERP_INIT :: RectF {
-	max(f32),
-	-max(f32),
-	max(f32),
-	-max(f32),
-}
+RECT_LERP_INIT :: RectF{max(f32), -max(f32), max(f32), -max(f32)}
 
 RectI :: struct {
 	l, r, t, b: int,
 }
 
-RECT_INF :: RectI {
-	max(int),
-	-max(int),
-	max(int),
-	-max(int),
-}
+RECT_INF :: RectI{max(int), -max(int), max(int), -max(int)}
 
 // build a rectangle from multiple
 rect_inf_push :: proc(rect: ^RectI, other: RectI) {
@@ -33,32 +23,27 @@ rect_inf_push :: proc(rect: ^RectI, other: RectI) {
 }
 
 rect_one :: #force_inline proc(a: int) -> RectI {
-	return { a, a, a, a }
+	return {a, a, a, a}
 }
 
 rect_one_inv :: #force_inline proc(a: int) -> RectI {
-	return { a, -a, a, -a }
+	return {a, -a, a, -a}
 }
 
 rect_negate :: #force_inline proc(a: RectI) -> RectI {
-	return {
-		-a.l,
-		-a.r,
-		-a.t,
-		-a.b,
-	}
+	return {-a.l, -a.r, -a.t, -a.b}
 }
 
 rect_valid :: #force_inline proc(a: RectI) -> bool {
 	return a.r > a.l && a.b > a.t
 }
 
-rect_invalid :: #force_inline proc(rect: RectI) -> bool { 
-	return !rect_valid(rect) 
+rect_invalid :: #force_inline proc(rect: RectI) -> bool {
+	return !rect_valid(rect)
 }
 
 rect_wh :: #force_inline proc(x, y, w, h: int) -> RectI {
-  return { x, x + w, y, y + h }
+	return {x, x + w, y, y + h}
 }
 
 rect_center :: #force_inline proc(a: RectI) -> (x, y: f32) {
@@ -67,7 +52,7 @@ rect_center :: #force_inline proc(a: RectI) -> (x, y: f32) {
 
 // width
 rect_width :: #force_inline proc(a: RectI) -> int {
-	return (a.r - a.l)
+	return a.r - a.l
 }
 rect_widthf :: #force_inline proc(a: RectI) -> f32 {
 	return f32(a.r - a.l)
@@ -81,7 +66,7 @@ rect_widthf_halfed :: #force_inline proc(a: RectI) -> f32 {
 
 // height
 rect_height :: #force_inline proc(a: RectI) -> int {
-	return (a.b - a.t)
+	return a.b - a.t
 }
 rect_heightf :: #force_inline proc(a: RectI) -> f32 {
 	return f32(a.b - a.t)
@@ -108,31 +93,31 @@ rect_opt_hf :: #force_inline proc(a: RectI, horizontal: bool) -> f32 {
 }
 
 rect_xxyy :: #force_inline proc(x, y: int) -> RectI {
-	return { x, x, y, y }
+	return {x, x, y, y}
 }
 
 rect_intersection :: proc(a, b: RectI) -> RectI {
 	a := a
-	if a.l < b.l do a.l = b.l
-	if a.t < b.t do a.t = b.t
-	if a.r > b.r do a.r = b.r
-	if a.b > b.b do a.b = b.b
+	if a.l < b.l {a.l = b.l}
+	if a.t < b.t {a.t = b.t}
+	if a.r > b.r {a.r = b.r}
+	if a.b > b.b {a.b = b.b}
 	return a
 }
 
 // smallest rectangle
 rect_bounding :: proc(a, b: RectI) -> RectI {
 	a := a
-	if a.l > b.l do a.l = b.l
-	if a.t > b.t do a.t = b.t
-	if a.r < b.r do a.r = b.r
-	if a.b < b.b do a.b = b.b
+	if a.l > b.l {a.l = b.l}
+	if a.t > b.t {a.t = b.t}
+	if a.r < b.r {a.r = b.r}
+	if a.b < b.b {a.b = b.b}
 	return a
 }
 
 rect_contains :: proc(a: RectI, x, y: int) -> bool {
 	return a.l <= x && a.r > x && a.t <= y && a.b > y
-}		
+}
 
 // rect cutting with HARD CUT, will result in invalid rectangles when out of size
 
@@ -218,11 +203,11 @@ rect_cut_out_rect :: proc(a, b: RectI) -> (res: [4]RectI) {
 
 	// middle
 	last := rect_intersection(res[0], res[1])
-	
+
 	// left
 	res[2] = last
 	res[2].r = b.l
-	
+
 	// right
 	res[3] = last
 	res[3].l = b.r
@@ -252,19 +237,9 @@ rect_animate_to :: proc(a: ^RectF, b: RectI, rate: f32 = 1, cuttoff: f32 = 0.001
 }
 
 rect_ftoi :: proc(a: RectF) -> RectI {
-	return {
-		int(a.l),
-		int(a.r),
-		int(a.t),
-		int(a.b),
-	}
+	return {int(a.l), int(a.r), int(a.t), int(a.b)}
 }
 
 rect_itof :: proc(a: RectI) -> RectF {
-	return {
-		f32(a.l),
-		f32(a.r),
-		f32(a.t),
-		f32(a.b),
-	}
+	return {f32(a.l), f32(a.r), f32(a.t), f32(a.b)}
 }

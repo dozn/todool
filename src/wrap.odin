@@ -1,9 +1,8 @@
 package src
 
 import "core:unicode"
-import "core:fmt"
-import "vendor:fontstash"
 import "cutf8"
+import "vendor:fontstash"
 
 //////////////////////////////////////////////
 // line wrapping helpers
@@ -47,7 +46,7 @@ wrap_format_to_lines :: proc(
 		// add widths
 		width_line += width_codepoint
 		width_word += width_codepoint
-		
+
 		if width_line > width_limit {
 			if !unicode.is_space(iter.codepoint) {
 				// when full word is longer than limit, just seperate like whitespace
@@ -78,11 +77,11 @@ wrap_format_to_lines :: proc(
 
 // getting the right index into the now cut lines of strings
 wrap_codepoint_index_to_line :: proc(
-	lines: []string, 
-	codepoint_index: int, 
+	lines: []string,
+	codepoint_index: int,
 	loc := #caller_location,
 ) -> (
-	y: int, 
+	y: int,
 	line_byte_offset: int,
 	line_codepoint_index: int,
 ) {
@@ -126,17 +125,19 @@ wrap_codepoint_index_to_line :: proc(
 // can be used on single lines of text or wrapped lines of text
 wrap_layout_caret :: proc(
 	ctx: ^fontstash.FontContext,
-	wrapped_lines: []string, // using the resultant lines
-	codepoint_index: int, // in codepoint_index, not byte_offset
+	wrapped_lines: []string,
+	codepoint_index: int,
 	loc := #caller_location,
-) -> (x_offset: int, line: int) {
+) -> (
+	x_offset: int,
+	// using the resultant lines
+	line: int,// in codepoint_index, not byte_offset
+) {
 	assert(len(wrapped_lines) > 0, "Lines should have valid content of lines > 0", loc)
 
 	// get wanted line and byte index offset
-	y, byte_offset, codepoint_offset := wrap_codepoint_index_to_line(
-		wrapped_lines, 
-		codepoint_index,
-	)
+	//TODO: "byte_offset" commented-out.
+	y, _, codepoint_offset := wrap_codepoint_index_to_line(wrapped_lines, codepoint_index)
 	line = y
 
 	q: fontstash.Quad
@@ -166,32 +167,34 @@ wrap_layout_caret :: proc(
 // which could span across multiple lines
 Wrap_State :: struct {
 	// font options
-	font: ^Font,
-	isize: i16,
-	iblur: i16,
-	scale: f32,
-	spacing: f32,
+	font:                 ^Font,
+	isize:                i16,
+	iblur:                i16,
+	scale:                f32,
+	spacing:              f32,
 
 	// formatted lines
-	lines: []string,
+	lines:                []string,
 
 	// wanted from / to
-	codepoint_offset: int,
-	codepoint_index_low: int,
+	codepoint_offset:     int,
+	codepoint_index_low:  int,
 	codepoint_index_high: int,
 
 	// output used
-	x_from: f32,
-	x_to: f32,
-	y: int, // always +1 in lines
+	x_from:               f32,
+	x_to:                 f32,
+	y:                    int, // always +1 in lines
 }
 
 wrap_state_init :: proc(
 	ctx: ^fontstash.FontContext,
-	lines: []string, 
+	lines: []string,
 	codepoint_index_from: int,
 	codepoint_index_to: int,
-) -> (res: Wrap_State) {
+) -> (
+	res: Wrap_State,
+) {
 	state := fontstash.__getState(ctx)
 	res.font = fontstash.__getFont(ctx, state.font)
 	res.isize = i16(state.size * 10)
@@ -203,14 +206,11 @@ wrap_state_init :: proc(
 	// do min / max here for safety instead of reyling on the user
 	res.codepoint_index_low = min(codepoint_index_from, codepoint_index_to)
 	res.codepoint_index_high = max(codepoint_index_from, codepoint_index_to)
-	
+
 	return
 }
 
-wrap_state_iter :: proc(
-	ctx: ^fontstash.FontContext,
-	w: ^Wrap_State,
-) -> bool {
+wrap_state_iter :: proc(ctx: ^fontstash.FontContext, w: ^Wrap_State) -> bool {
 	w.x_from = -1
 	q: fontstash.Quad
 
@@ -226,17 +226,28 @@ wrap_state_iter :: proc(
 
 		// step through each line to find selection area
 		for codepoint, codepoint_index in cutf8.ds_iter(&ds, line) {
-			glyph, ok := fontstash.__getGlyph(ctx, w.font, codepoint, w.isize, w.iblur)
+			//FIXME: Error checking.
+			glyph, _ := fontstash.__getGlyph(ctx, w.font, codepoint, w.isize, w.iblur)
 			index := w.codepoint_offset + codepoint_index
 			old := temp_x
 
 			if glyph != nil {
-				fontstash.__getQuad(ctx, w.font, previous_glyph_index, glyph, w.scale, w.spacing, &temp_x, &temp_y, &q)
+				fontstash.__getQuad(
+					ctx,
+					w.font,
+					previous_glyph_index,
+					glyph,
+					w.scale,
+					w.spacing,
+					&temp_x,
+					&temp_y,
+					&q,
+				)
 			}
 
-			if w.codepoint_index_low <= index && index < w.codepoint_index_high  {
+			if w.codepoint_index_low <= index && index < w.codepoint_index_high {
 				w.x_to = temp_x
-				
+
 				if w.x_from == -1 {
 					w.x_from = old
 				}

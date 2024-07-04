@@ -2,7 +2,6 @@ package src
 
 import "core:unicode"
 import "core:unicode/utf8"
-import "core:fmt"
 import "cutf8"
 
 SS_SIZE :: 255
@@ -15,7 +14,7 @@ ss_temp_runes: [SS_SIZE]rune
 // 
 // insert_at & remove_at are a bit more involved
 Small_String :: struct {
-	buf: [SS_SIZE]u8,
+	buf:    [SS_SIZE]u8,
 	length: u8, // used up content
 }
 
@@ -65,7 +64,7 @@ ss_append :: proc(ss: ^Small_String, c: rune) -> bool {
 	data, size := utf8.encode_rune(c)
 
 	if int(ss.length) + size <= SS_SIZE {
-		for i in 0..<size {
+		for i in 0 ..< size {
 			ss.buf[ss.length] = data[i]
 			ss.length += 1
 		}
@@ -86,7 +85,7 @@ ss_pop :: proc(ss: ^Small_String) -> (c: rune, ok: bool) {
 			// pop of the rune
 			ss.length -= u8(size)
 			ok = true
-			return 
+			return
 		}
 	}
 
@@ -95,8 +94,8 @@ ss_pop :: proc(ss: ^Small_String) -> (c: rune, ok: bool) {
 
 SS_Byte_Info :: struct {
 	byte_index: u8,
-	codepoint: rune,
-	size: u8,
+	codepoint:  rune,
+	size:       u8,
 }
 
 // find the byte index at codepoint index
@@ -121,7 +120,7 @@ _ss_find_byte_index_info :: proc(
 	}
 
 	info.byte_index = u8(ds.byte_offset)
-	return 
+	return
 }
 
 // NOTE in utf8 indexing space!
@@ -134,12 +133,13 @@ ss_insert_at :: proc(ss: ^Small_String, index: int, c: rune) -> bool {
 
 		// check if we even have enough space
 		if int(ss.length) + size <= SS_SIZE {
-			undex := u8(index)
+			//TODO: Declared but not used.
+			// undex := u8(index)
 			info, found := _ss_find_byte_index_info(ss, index)
 
 			// check for append situation still since its faster then copy
 			if ss.length == info.byte_index || !found {
-				for i in 0..<size {
+				for i in 0 ..< size {
 					ss.buf[ss.length] = data[i]
 					ss.length += 1
 				}
@@ -151,7 +151,7 @@ ss_insert_at :: proc(ss: ^Small_String, index: int, c: rune) -> bool {
 			copy(ss.buf[info.byte_index + u8(size):ss.length], ss.buf[info.byte_index:ss.length])
 
 			// fill in the 1~4 bytes with the rune data
-			for i in 0..<u8(size) {
+			for i in 0 ..< u8(size) {
 				ss.buf[info.byte_index + i] = data[i]
 			}
 
@@ -167,7 +167,7 @@ ss_insert_at :: proc(ss: ^Small_String, index: int, c: rune) -> bool {
 ss_remove_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 	if ss.length == 0 {
 		return
-	} 
+	}
 
 	info, found := _ss_find_byte_index_info(ss, index)
 
@@ -177,7 +177,7 @@ ss_remove_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 
 	// no need to copy if at end
 	// if info.byte_index != ss.length {
-		copy(ss.buf[info.byte_index:ss.length], ss.buf[info.byte_index + info.size:ss.length])
+	copy(ss.buf[info.byte_index:ss.length], ss.buf[info.byte_index + info.size:ss.length])
 	// }
 
 	ss.length -= info.size
@@ -191,7 +191,7 @@ ss_remove_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 ss_delete_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 	if ss.length == 0 {
 		return
-	} 
+	}
 
 	info, found := _ss_find_byte_index_info(ss, index)
 
@@ -238,7 +238,7 @@ ss_set_string :: proc(ss: ^Small_String, text: string) {
 // remove the selection into the temp buffer
 // false if diff is low
 ss_remove_selection :: proc(
-	ss: ^Small_String, 
+	ss: ^Small_String,
 	low, high: int,
 	temp: []u8,
 ) -> (
@@ -251,8 +251,9 @@ ss_remove_selection :: proc(
 	}
 
 	// could be optimized to inline find both instantly
-	info1, found1 := _ss_find_byte_index_info(ss, low)
-	info2, found2 := _ss_find_byte_index_info(ss, high)
+	//FIXME: Error checking.
+	info1, _ := _ss_find_byte_index_info(ss, low)
+	info2, _ := _ss_find_byte_index_info(ss, high)
 
 	size := info2.byte_index - info1.byte_index
 	// copy into temp buffer
@@ -267,16 +268,13 @@ ss_remove_selection :: proc(
 }
 
 // insert string at index if it has enough space
-ss_insert_string_at :: proc(
-	ss: ^Small_String,
-	index: int,
-	text: string,
-) -> bool {
+ss_insert_string_at :: proc(ss: ^Small_String, index: int, text: string) -> bool {
 	if len(text) == 0 {
 		return false
 	}
 
-	info, found := _ss_find_byte_index_info(ss, index)
+	//FIXME: Error check the bool.
+	info, _ := _ss_find_byte_index_info(ss, index)
 
 	new_size := min(int(ss.length) + len(text), SS_SIZE)
 
@@ -288,15 +286,9 @@ ss_insert_string_at :: proc(
 	ss.length += diff_size
 
 	// copy forward
-	copy(
-		ss.buf[info.byte_index + diff_size:ss.length], 
-		ss.buf[info.byte_index:ss.length],
-	)
+	copy(ss.buf[info.byte_index + diff_size:ss.length], ss.buf[info.byte_index:ss.length])
 	// copy from thingy
-	copy(
-		ss.buf[info.byte_index:info.byte_index + diff_size],
-		text[:diff_size],
-	)
+	copy(ss.buf[info.byte_index:info.byte_index + diff_size], text[:diff_size])
 
 	return true
 }
@@ -312,7 +304,7 @@ ss_uppercased_string :: proc(ss: ^Small_String) {
 
 	// append lower case version
 	ss_clear(ss)
-	for codepoint, i in cutf8.ds_iter(&ds, input) {	
+	for codepoint, i in cutf8.ds_iter(&ds, input) {
 		codepoint := codepoint
 
 		if i == 0 || (prev != 0 && prev == ' ') {
@@ -333,7 +325,7 @@ ss_lowercased_string :: proc(ss: ^Small_String) {
 
 	// append lower case version
 	ss_clear(ss)
-	for codepoint, i in cutf8.ds_iter(&ds, input) {	
+	for codepoint in cutf8.ds_iter(&ds, input) {
 		ss_append(ss, unicode.to_lower(codepoint))
 	}
 }
@@ -343,7 +335,7 @@ ss_to_runes_temp :: proc(ss: ^Small_String) -> []rune {
 	state, codepoint: rune
 	codepoint_index: int
 
-	for i in 0..<ss.length {
+	for i in 0 ..< ss.length {
 		if cutf8.decode(&state, &codepoint, ss.buf[i]) {
 			ss_temp_runes[codepoint_index] = codepoint
 			codepoint_index += 1

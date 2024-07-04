@@ -1,9 +1,5 @@
 package src
 
-import "core:mem"
-import "core:fmt"
-import "core:runtime"
-
 // TASK LAYOUT DATA
 // dynamic array to store new tasks -> no new(Task) required anymore
 // free list to store which tasks were previously "removed" for undo/redo capability
@@ -24,8 +20,8 @@ import "core:runtime"
 //     insert the handle at any "filter" index
 
 Task_Pool :: struct {
-	list: [dynamic]Task, // storage for tasks, never change layout here
-	filter: [dynamic]int, // what to use
+	list:      [dynamic]Task, // storage for tasks, never change layout here
+	filter:    [dynamic]int, // what to use
 	free_list: [dynamic]int, // empty indices that are allocated but unused from a save file
 }
 
@@ -49,13 +45,11 @@ task_pool_push_new :: proc(pool: ^Task_Pool, check_freed: bool) -> (task: ^Task)
 		resized = true
 	}
 
-	append(&pool.list, Task {
-		list_index = index,
-	})
+	append(&pool.list, Task{list_index = index})
 
 	if resized {
 		// NOTE stupid fix to keep pointers to task parents sane
-		for task in &pool.list {
+		for &task in &pool.list {
 			for child in &task.element.children {
 				child.parent = &task.element
 			}
@@ -73,7 +67,7 @@ task_pool_init :: proc() -> (res: Task_Pool) {
 }
 
 task_pool_clear :: proc(pool: ^Task_Pool) {
-	for task in &pool.list {
+	for &task in &pool.list {
 		element_destroy_and_deallocate(&task.element)
 	}
 
@@ -84,7 +78,7 @@ task_pool_clear :: proc(pool: ^Task_Pool) {
 }
 
 task_pool_destroy :: proc(pool: ^Task_Pool) {
-	for task in &pool.list {
+	for &task in &pool.list {
 		element_destroy_and_deallocate(&task.element)
 	}
 

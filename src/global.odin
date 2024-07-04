@@ -1,26 +1,21 @@
 package src
 
-import "core:intrinsics"
-import "core:thread"
+import "base:intrinsics"
+import "base:runtime"
+import dll "core:container/intrusive/list"
+import "core:fmt"
 import "core:image"
 import "core:image/png"
-import "core:fmt"
-import "core:os"
-import "core:time"
-import "core:math"
-import "core:math/ease"
-import "core:mem"
 import "core:log"
+import "core:mem"
+import "core:os"
 import "core:strings"
-import "core:runtime"
-import "core:unicode"
-import "core:unicode/utf8"
-import dll "core:container/intrusive/list"
+import "core:thread"
+import "core:time"
+import "cutf8"
+import "vendor:fontstash"
 import sdl "vendor:sdl2"
 import mix "vendor:sdl2/mixer"
-import gl "vendor:OpenGL"
-import "vendor:fontstash"
-import "cutf8"
 
 FPS_MIN :: 15
 FPS_MAX :: 240
@@ -80,7 +75,7 @@ custom_load_wav_opt :: proc(index: Sound_Index, opt_data: []byte) {
 			log.info("SOUND: only .wav soundfiles are allowed!")
 		}
 	}
-	
+
 	// loadfrom default bytes
 	if res == nil {
 		res = custom_load_wav_mem(opt_data)
@@ -90,7 +85,7 @@ custom_load_wav_opt :: proc(index: Sound_Index, opt_data: []byte) {
 }
 
 sound_path_write :: proc(index: Sound_Index, text: string) {
-	to := &gs.sound_paths[index] 
+	to := &gs.sound_paths[index]
 
 	if text != "" {
 		to^ = strings.clone(text)
@@ -107,86 +102,86 @@ MOUSE_RIGHT :: 3
 Mouse_Coordinates :: [2]int
 
 Window :: struct {
-	element: Element,
-	node: dll.Node,
-	
+	element:                    Element,
+	node:                       dll.Node,
+
 	// interactable elements
-	hovered: ^Element,
-	pressed: ^Element,
-	pressed_last: ^Element,
-	focused: ^Element,
+	hovered:                    ^Element,
+	pressed:                    ^Element,
+	pressed_last:               ^Element,
+	focused:                    ^Element,
 
 	// hovered info 
-	hovered_start: time.Tick, // when the element was first hovered
-	hovered_panel: ^Panel_Floaty, // set in init, but hidden
+	hovered_start:              time.Tick, // when the element was first hovered
+	hovered_panel:              ^Panel_Floaty, // set in init, but hidden
 
 	// click counting
-	clicked_last: ^Element,
-	click_count: int,
-	clicked_start: time.Tick,
-	raise_next: bool,
+	clicked_last:               ^Element,
+	click_count:                int,
+	clicked_start:              time.Tick,
+	raise_next:                 bool,
 
 	// mouse behaviour
-	cursor_x, cursor_y: int,
+	cursor_x, cursor_y:         int,
 	cursor_x_old, cursor_y_old: int,
-	down_middle: Mouse_Coordinates,
-	down_left: Mouse_Coordinates,
-	down_right: Mouse_Coordinates,
-	pressed_button: int,
-	
+	down_middle:                Mouse_Coordinates,
+	down_left:                  Mouse_Coordinates,
+	down_right:                 Mouse_Coordinates,
+	pressed_button:             int,
+
 	// window sizing
-	width, height: int,
-	widthf, heightf: f32,
-	rect: RectI,
-	paint_clip: RectI,
-	fullscreened: bool,
+	width, height:              int,
+	widthf, heightf:            f32,
+	rect:                       RectI,
+	paint_clip:                 RectI,
+	fullscreened:               bool,
 
 	// rendering
-	update_next: bool,
-	update_check: proc(window: ^Window) -> bool, // for custom animation handling
-	target: ^Render_Target,
+	update_next:                bool,
+	update_check:               proc(window: ^Window) -> bool, // for custom animation handling
+	target:                     ^Render_Target,
 
 	// sdl data
-	w: ^sdl.Window,
-	w_id: u32,
-	cursor: Cursor,
-	cursor_motion: [2]int,
+	w:                          ^sdl.Window,
+	w_id:                       u32,
+	cursor:                     Cursor,
+	cursor_motion:              [2]int,
 
 	// key state
-	combo_builder: strings.Builder,
-	ignore_text_input: bool,
-	ctrl, shift, alt, super: bool,
+	combo_builder:              strings.Builder,
+	ignore_text_input:          bool,
+	ctrl, shift, alt, super:    bool,
 
 	// assigned shortcuts to procedures in window
-	keymap_box: Keymap,
-	keymap_custom: Keymap,
-	dialog: ^Dialog,
+	keymap_box:                 Keymap,
+	keymap_custom:              Keymap,
+	dialog:                     ^Dialog,
 
 	// menu
-	menu: ^Panel_Floaty,
-	menu_info: int,
-	menu_filter: bool, // accept unicode insertion for menus, writes into menu_builder
+	menu:                       ^Panel_Floaty,
+	menu_info:                  int,
+	menu_filter:                bool, // accept unicode insertion for menus, writes into menu_builder
 
 	// proc that gets called before layout & draw
-	update_before: proc(window: ^Window),
-	update_after: proc(window: ^Window),
+	update_before:              proc(window: ^Window),
+	update_after:               proc(window: ^Window),
 
 	// title
-	title_builder: strings.Builder,
+	title_builder:              strings.Builder,
 
 	// drop handling
-	drop_indices: [dynamic]int, // indices into the file name builder
-	drop_file_name_builder: strings.Builder,
-	drop_index: int,
-	drop_indice: int,
+	drop_indices:               [dynamic]int, // indices into the file name builder
+	drop_file_name_builder:     strings.Builder,
+	drop_index:                 int,
+	drop_indice:                int,
 
 	// callbacks
-	on_resize: proc(window: ^Window),
-	on_focus_gained: proc(window: ^Window),
-	on_menu_close: proc(window: ^Window),
+	on_resize:                  proc(window: ^Window),
+	on_focus_gained:            proc(window: ^Window),
+	on_menu_close:              proc(window: ^Window),
 
 	// next window
-	name: string,
+	name:                       string,
 }
 
 Cursor :: enum {
@@ -200,61 +195,54 @@ Cursor :: enum {
 }
 
 Global_State :: struct {
-	windows_list: dll.List,
+	windows_list:          dll.List,
 
 	// wether dropped was text or file paths
-	dropped_text: bool,
+	dropped_text:          bool,
 
 	// logger data
-	logger: log.Logger,
-	log_path: string, // freed at destroy
-	pref_path: string, // freed at destroy
-	base_path: string, // freed at destroy
-	cstring_builder: strings.Builder,
+	logger:                log.Logger,
+	log_path:              string, // freed at destroy
+	pref_path:             string, // freed at destroy
+	base_path:             string, // freed at destroy
+	cstring_builder:       strings.Builder,
 
 	// builder to store clipboard content
-	copy_builder: strings.Builder,
-
-	cursors: [Cursor]^sdl.Cursor,
-
-	running: bool,
-	frame_start: u64,
-	dt: f32,
-	accumulator: f32,
+	copy_builder:          strings.Builder,
+	cursors:               [Cursor]^sdl.Cursor,
+	running:               bool,
+	frame_start:           u64,
+	dt:                    f32,
+	accumulator:           f32,
 
 	// animating elements
-	animating: [dynamic]^Element,
+	animating:             [dynamic]^Element,
 
 	// event intercepting
-	ignore_quit: bool,
-
-	audio_ok: bool, // true when sdl mix module loaded fine
-	sound_paths: [Sound_Index]string,
-	sounds: [Sound_Index]^mix.Chunk,
+	ignore_quit:           bool,
+	audio_ok:              bool, // true when sdl mix module loaded fine
+	sound_paths:           [Sound_Index]string,
+	sounds:                [Sound_Index]^mix.Chunk,
 
 	// stores multiple png images
-	stored_images: [dynamic]Stored_Image,
-	stored_image_thread: ^thread.Thread,
-	
+	stored_images:         [dynamic]Stored_Image,
+	stored_image_thread:   ^thread.Thread,
 	window_hovering_timer: sdl.TimerID,
-
-	font_regular_path: string,
-	font_bold_path: string,
-
-	track: mem.Tracking_Allocator,
-	fc: fontstash.FontContext,
+	font_regular_path:     string,
+	font_bold_path:        string,
+	track:                 mem.Tracking_Allocator,
+	fc:                    fontstash.FontContext,
 }
 gs: ^Global_State
 
 Stored_Image_Load_Finished :: proc(img: ^Stored_Image, data: rawptr)
 Stored_Image :: struct {
 	using backing: ^image.Image,
-	handle: u32,
-	handle_set: bool,
-	loaded: bool,
-	
-	path: [256]u8, // static path, clipped
-	path_length: u8,
+	handle:        u32,
+	handle_set:    bool,
+	loaded:        bool,
+	path:          [256]u8, // static path, clipped
+	path_length:   u8,
 }
 
 image_path :: proc(img: ^Stored_Image) -> string {
@@ -263,15 +251,15 @@ image_path :: proc(img: ^Stored_Image) -> string {
 
 image_find :: proc(path: string) -> (index: int) {
 	index = -1
-	
+
 	for &img, i in &gs.stored_images {
 		if image_path(&img) == path {
 			index = i
-			return 
+			return
 		}
 	}
 
-	return 
+	return
 }
 
 // push a load command and create a thread if not existing yet
@@ -286,9 +274,9 @@ image_load_push :: proc(path: string) -> (res: ^Stored_Image) {
 	if index == -1 {
 		if gs.stored_image_thread == nil {
 			gs.stored_image_thread = thread.create_and_start(image_load_process_on_thread)
-		} 
+		}
 
-		append(&gs.stored_images, Stored_Image {})
+		append(&gs.stored_images, Stored_Image{})
 		res = &gs.stored_images[len(gs.stored_images) - 1]
 		res.path_length = u8(len(path))
 		copy(res.path[:], path[:])
@@ -302,7 +290,7 @@ image_load_push :: proc(path: string) -> (res: ^Stored_Image) {
 // loads an image from a file
 image_load_from_file :: proc(path: string) -> (res: ^image.Image) {
 	content, ok := os.read_entire_file(path)
-	
+
 	if !ok {
 		log.error("IMAGE: path not found", path)
 		return
@@ -342,7 +330,7 @@ image_load_process_on_thread :: proc() {
 image_load_process_texture_handles :: proc(window: ^Window) {
 	sdl.GL_MakeCurrent(window.w, window.target.opengl_context)
 
-	for img in &gs.stored_images {
+	for &img in &gs.stored_images {
 		if img.backing != nil && img.loaded && !img.handle_set {
 			img.handle = shallow_texture_init(img.backing)
 			img.handle_set = true
@@ -358,7 +346,7 @@ Sound_Index :: enum {
 }
 
 // play a single sound
-sound_play :: proc(index: Sound_Index) {	
+sound_play :: proc(index: Sound_Index) {
 	if gs.audio_ok {
 		mix.PlayChannel(0, gs.sounds[index], 0)
 	}
@@ -389,28 +377,23 @@ window_destroy :: proc(window: ^Window) {
 window_init :: proc(
 	owner: ^Window,
 	flags: Element_Flags,
-	title: cstring, 
+	title: cstring,
 	w, h: i32,
 	command_cap: int,
 	combos_cap: int,
-) -> (res: ^Window) {
+) -> (
+	res: ^Window,
+) {
 	x_pos := i32(sdl.WINDOWPOS_UNDEFINED)
 	y_pos := i32(sdl.WINDOWPOS_UNDEFINED)
-	window_flags: sdl.WindowFlags = { .OPENGL, .HIDDEN, .RESIZABLE }
+	window_flags: sdl.WindowFlags = {.OPENGL, .HIDDEN, .RESIZABLE}
 
 	if .Window_Center_In_Owner in flags {
-		x_pos	= sdl.WINDOWPOS_CENTERED
-		y_pos	= sdl.WINDOWPOS_CENTERED
+		x_pos = sdl.WINDOWPOS_CENTERED
+		y_pos = sdl.WINDOWPOS_CENTERED
 	}
 
-	window := sdl.CreateWindow(
-		title, 
-		x_pos,
-		y_pos,
-		w,
-		h,
-		window_flags,
-	)
+	window := sdl.CreateWindow(title, x_pos, y_pos, w, h, window_flags)
 	if window == nil {
 		sdl.Quit()
 		log.panic("SDL2: error during window creation %v", sdl.GetError())
@@ -418,14 +401,15 @@ window_init :: proc(
 	window_id := sdl.GetWindowID(window)
 
 	_window_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		window := cast(^Window) element
+		window := cast(^Window)element
 
 		#partial switch msg {
-			case .Layout: {
+		case .Layout:
+			{
 				for child in element.children {
 					if child.message_class == panel_floaty_message {
 						// layout floaty panels only with their own custom size
-						floaty := cast(^Panel_Floaty) child
+						floaty := cast(^Panel_Floaty)child
 						floaty.clip = element.bounds
 						element_message(floaty, .Layout)
 						floaty.clip = floaty.panel.bounds
@@ -436,7 +420,8 @@ window_init :: proc(
 				}
 			}
 
-			case .Deallocate: {
+		case .Deallocate:
+			{
 				// NEEDS TO BE CALLED IN HERE, CUZ OTHERWHISE ITS ALREADY REMOVED
 				window_deallocate(window)
 			}
@@ -446,15 +431,9 @@ window_init :: proc(
 	}
 
 	window_element_flags := flags
-	window_element_flags |= { .Tab_Movement_Allowed, .Sort_By_Z_Index }
+	window_element_flags |= {.Tab_Movement_Allowed, .Sort_By_Z_Index}
 
-	res = element_init(
-		Window, 
-		nil, 
-		window_element_flags,
-		_window_message,
-		context.allocator,
-	)
+	res = element_init(Window, nil, window_element_flags, _window_message, context.allocator)
 
 	res.w = window
 	res.w_id = window_id
@@ -462,7 +441,7 @@ window_init :: proc(
 	res.combo_builder = strings.builder_make(0, 32)
 	res.title_builder = strings.builder_make(0, 64)
 	// res.menu_builder = strings.builder_make(0, 64)
-	
+
 	res.target = render_target_init(window)
 	res.update_next = true
 	res.cursor_x = -100
@@ -484,13 +463,14 @@ window_init :: proc(
 
 	// set hovered panel
 	{
-		floaty := panel_floaty_init(&res.element, { .Disabled })
+		floaty := panel_floaty_init(&res.element, {.Disabled})
 		floaty.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-			floaty := cast(^Panel_Floaty) element
+			floaty := cast(^Panel_Floaty)element
 			panel := floaty.panel
 
 			#partial switch msg {
-				case .Layout: {
+			case .Layout:
+				{
 					// NOTE could do hight here too
 					floaty.height = int(DEFAULT_FONT_SIZE * SCALE + TEXT_MARGIN_VERTICAL * SCALE)
 					rect := rect_wh(floaty.x, floaty.y, floaty.width, floaty.height)
@@ -502,10 +482,10 @@ window_init :: proc(
 			return 0
 		}
 		p := floaty.panel
-		p.flags |= { .Panel_Expand, .Disabled }
+		p.flags |= {.Panel_Expand, .Disabled}
 		p.shadow = true
 		p.rounded = true
-		label_init(p, { .Label_Center, .Disabled })
+		label_init(p, {.Label_Center, .Disabled})
 		res.hovered_panel = floaty
 		element_hide(floaty, true)
 	}
@@ -520,9 +500,10 @@ gs_update_after_load :: proc() {
 	add :: proc(index: int, pixel_size: int) {
 		font := fontstash.__getFont(&gs.fc, index)
 		isize := i16(pixel_size * 10)
-		scale := fontstash.__getPixelHeightScale(font, f32(isize / 10))
+		//TODO: Declared but not used.
+		// scale := fontstash.__getPixelHeightScale(font, f32(isize / 10))
 
-		for i in 0..<95 {
+		for i in 0 ..< 95 {
 			fontstash.__getGlyph(&gs.fc, font, rune(32 + i), isize)
 		}
 	}
@@ -564,12 +545,12 @@ window_repaint :: #force_inline proc(window: ^Window) {
 window_hovered_panel_spawn :: proc(window: ^Window, element: ^Element, text: string) {
 	floaty := window.hovered_panel
 	element_hide(floaty, false)
-	
+
 	p := floaty.panel
 	floaty.x = window.cursor_x
 
 	// NOTE static
-	label := cast(^Label) p.children[0]
+	label := cast(^Label)p.children[0]
 	strings.builder_reset(&label.builder)
 	strings.write_string(&label.builder, text)
 
@@ -585,7 +566,10 @@ window_hovered_panel_spawn :: proc(window: ^Window, element: ^Element, text: str
 	fcs_size(DEFAULT_FONT_SIZE * SCALE)
 	fcs_font(font_regular)
 	text_width := fontstash.TextBounds(&gs.fc, text)
-	floaty.width = max(int(HOVER_WIDTH * SCALE), int(text_width) + int(TEXT_MARGIN_HORIZONTAL * SCALE) * 2)
+	floaty.width = max(
+		int(HOVER_WIDTH * SCALE),
+		int(text_width) + int(TEXT_MARGIN_HORIZONTAL * SCALE) * 2,
+	)
 
 	if floaty.x + floaty.width > window.width {
 		floaty.x = window.width - floaty.width - 5
@@ -607,7 +591,7 @@ window_mouse_rect :: proc(window: ^Window, w := 1, h := 1) -> RectI {
 }
 
 window_mouse_position :: proc(window: ^Window) -> Mouse_Coordinates {
-	return { window.cursor_x, window.cursor_y }
+	return {window.cursor_x, window.cursor_y}
 }
 
 window_mouse_inside :: proc(window: ^Window) -> bool {
@@ -654,7 +638,7 @@ window_set_size :: proc(window: ^Window, w, h: int) {
 window_border_size :: proc(window: ^Window) -> (top, left, bottom, right: int) {
 	t, l, b, r: i32
 	res := sdl.GetWindowBordersSize(window.w, &t, &l, &b, &r)
-	
+
 	if res == 0 {
 		top = int(t)
 		left = int(l)
@@ -674,9 +658,16 @@ window_border_size :: proc(window: ^Window) -> (top, left, bottom, right: int) {
 }
 
 // send call to focused, focused parents or window
-window_send_msg_to_focused_or_parents :: proc(window: ^Window, msg: Message, di: int, dp: rawptr) -> (handled: bool) {
+window_send_msg_to_focused_or_parents :: proc(
+	window: ^Window,
+	msg: Message,
+	di: int,
+	dp: rawptr,
+) -> (
+	handled: bool,
+) {
 	if window.focused != nil {
-		
+
 		// call messages up the parents till anyone returns 1
 		e := window.focused
 		for e != nil {
@@ -684,7 +675,7 @@ window_send_msg_to_focused_or_parents :: proc(window: ^Window, msg: Message, di:
 				handled = true
 				break
 			}
-			
+
 			if window.dialog != nil && e == window.dialog {
 				break
 			}
@@ -696,14 +687,14 @@ window_send_msg_to_focused_or_parents :: proc(window: ^Window, msg: Message, di:
 		if element_message(&window.element, msg, di, dp) == 1 {
 			handled = true
 		}
-	}		
+	}
 
 	return
 }
 
 element_send_msg_until_received :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) {
 	e := element
-	
+
 	for e != nil {
 		if element_message(e, msg, di, dp) == 1 {
 			break
@@ -719,7 +710,14 @@ window_set_cursor :: proc(window: ^Window, cursor: Cursor) {
 }
 
 // handle all os input events
-window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawptr = nil) -> (res: bool) {
+window_input_event :: proc(
+	window: ^Window,
+	msg: Message,
+	di: int = 0,
+	dp: rawptr = nil,
+) -> (
+	res: bool,
+) {
 	if msg == .Dropped_Files || msg == .Dropped_Text {
 		to := window.hovered == nil ? &window.element : window.hovered
 		element_send_msg_until_received(to, msg, di, dp)
@@ -741,7 +739,12 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 			}
 
 			sdl.CaptureMouse(true)
-			element_send_msg_until_received(window.pressed, .Mouse_Drag, window.click_count, coords)
+			element_send_msg_until_received(
+				window.pressed,
+				.Mouse_Drag,
+				window.click_count,
+				coords,
+			)
 		} else if msg == .Left_Up && window.pressed_button == MOUSE_LEFT {
 			// if the left mouse button was released - and this button that was pressed to begin with
 			if window.hovered == window.pressed {
@@ -785,18 +788,20 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 		hovered := element_find_by_point(&window.element, window.cursor_x, window.cursor_y)
 
 		#partial switch msg {
-			case .Mouse_Move: {
+		case .Mouse_Move:
+			{
 				// if the mouse was moved, tell the hovered parent
 				element_message(hovered, .Mouse_Move, di, dp)
 				wanted_cursor := element_message(hovered, .Get_Cursor)
-				cursor := cast(Cursor) wanted_cursor
-				
+				cursor := cast(Cursor)wanted_cursor
+
 				if cursor != window.cursor {
 					window_set_cursor(window, cursor)
 				}
-			} 
+			}
 
-			case .Left_Down: {
+		case .Left_Down:
+			{
 				if element_is_from_menu(window, hovered) || !menu_close(window) {
 					// if the left mouse button is pressed, start pressing the hovered element
 					window_set_pressed(window, hovered, MOUSE_LEFT)
@@ -804,7 +809,8 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 				}
 			}
 
-			case .Middle_Down: {
+		case .Middle_Down:
+			{
 				if element_is_from_menu(window, hovered) || !menu_close(window) {
 					// if the middle mouse button is pressed, start pressing the hovered element
 					window_set_pressed(window, hovered, MOUSE_MIDDLE)
@@ -812,7 +818,8 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 				}
 			}
 
-			case .Right_Down: {
+		case .Right_Down:
+			{
 				if element_is_from_menu(window, hovered) || !menu_close(window) {
 					// if the middle mouse button is pressed, start pressing the hovered element
 					window_set_pressed(window, hovered, MOUSE_RIGHT)
@@ -820,7 +827,8 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 				}
 			}
 
-			case .Key_Combination: {
+		case .Key_Combination:
+			{
 				handled := false
 
 				// quick ask window element
@@ -830,7 +838,7 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 					}
 				}
 
-				combo := (cast(^string) dp)^
+				combo := (cast(^string)dp)^
 
 				if window.focused != nil && combo == "escape" {
 					if window.dialog == nil && window.menu == nil {
@@ -855,8 +863,12 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 						}
 
 						if !steal_input {
-							match |= combo == "up" || combo == "down" || combo == "left" || combo == "right"
-							backwards |= combo == "up" || combo == "left" 
+							match |=
+								combo == "up" ||
+								combo == "down" ||
+								combo == "left" ||
+								combo == "right"
+							backwards |= combo == "up" || combo == "left"
 						} else {
 							match = false
 						}
@@ -866,28 +878,26 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 						start := window.focused != nil ? window.focused : &window.element
 						element := start
 						first := true
-						
+
 						cond :: proc(element, start: ^Element, first: ^bool) -> bool {
 							if first^ {
 								first^ = false
 								return true
 							}
 
-							return element != start && (
-								(.Tab_Stop not_in element.flags) ||
-								(.Hide in element.flags)
+							return(
+								element != start &&
+								((.Tab_Stop not_in element.flags) || (.Hide in element.flags)) \
 							)
 						}
 
 						// simulate do while
 						next_search: for cond(element, start, &first) {
 							// set to first child?
-							if 
-								(.Tab_Movement_Allowed in element.flags) &&
-								len(element.children) != 0 && 
-								(.Hide not_in element.flags) && 
-								element.clip != {} 
-							{
+							if (.Tab_Movement_Allowed in element.flags) &&
+							   len(element.children) != 0 &&
+							   (.Hide not_in element.flags) &&
+							   element.clip != {} {
 								if backwards {
 									element = element.children[len(element.children) - 1]
 								} else {
@@ -928,10 +938,15 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 						element_repaint(element)
 						handled = true
 					}
-				} 
+				}
 
 				if !handled {
-					handled = window_send_msg_to_focused_or_parents(window, .Key_Combination, di, dp)
+					handled = window_send_msg_to_focused_or_parents(
+						window,
+						.Key_Combination,
+						di,
+						dp,
+					)
 				}
 
 				// NOTE workaround to get about to close on non focus
@@ -943,7 +958,8 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 				res = handled
 			}
 
-			case .Unicode_Insertion: {
+		case .Unicode_Insertion:
+			{
 				if !window.menu_filter && menu_close(window) {
 					return false
 				}
@@ -951,17 +967,19 @@ window_input_event :: proc(window: ^Window, msg: Message, di: int = 0, dp: rawpt
 				return window_send_msg_to_focused_or_parents(window, .Unicode_Insertion, di, dp)
 			}
 
-			case .Mouse_Scroll_X: {
+		case .Mouse_Scroll_X:
+			{
 				if element_is_from_menu(window, hovered) || !menu_close(window) {
-					di := di * options_scroll_x()
-					element_send_msg_until_received(window.hovered, .Mouse_Scroll_X, di, dp)
+					_di := di * options_scroll_x()
+					element_send_msg_until_received(window.hovered, .Mouse_Scroll_X, _di, dp)
 				}
 			}
 
-			case .Mouse_Scroll_Y: {
+		case .Mouse_Scroll_Y:
+			{
 				if element_is_from_menu(window, hovered) || !menu_close(window) {
-					di := di * options_scroll_y()
-					element_send_msg_until_received(window.hovered, .Mouse_Scroll_Y, di, dp)
+					_di := di * options_scroll_y()
+					element_send_msg_until_received(window.hovered, .Mouse_Scroll_Y, _di, dp)
 				}
 			}
 		}
@@ -1012,7 +1030,7 @@ window_hovered_check :: proc(window: ^Window) -> bool {
 
 	if (.Hide in window.hovered_panel.flags) {
 		hover_info := element_hover_info(e)
-		
+
 		if hover_info != "" && window.pressed_last != e {
 			diff := time.tick_since(window.hovered_start)
 
@@ -1024,7 +1042,7 @@ window_hovered_check :: proc(window: ^Window) -> bool {
 		}
 	} else {
 		hover_info := element_hover_info(e)
-		
+
 		// hide away again on non info
 		if hover_info == "" {
 			element_hide(window.hovered_panel, true)
@@ -1034,7 +1052,7 @@ window_hovered_check :: proc(window: ^Window) -> bool {
 
 		if window.pressed_last == e {
 			element_hide(window.hovered_panel, true)
-			window_repaint(window)					
+			window_repaint(window)
 			return true
 		}
 	}
@@ -1110,7 +1128,7 @@ window_deallocate :: proc(window: ^Window) {
 }
 
 window_layout_update :: proc(window: ^Window) {
-	window.element.bounds = { 0, window.width, 0, window.height }
+	window.element.bounds = {0, window.width, 0, window.height}
 	window.element.clip = window.element.bounds
 	window.update_next = true
 }
@@ -1125,31 +1143,30 @@ window_build_combo :: proc(window: ^Window, key: sdl.KeyboardEvent) -> (res: str
 		return
 	}
 
-	using strings
 	b := &window.combo_builder
-	builder_reset(b)
+	strings.builder_reset(b)
 
 	if window.super {
-		write_string(b, "super ")
+		strings.write_string(b, "super ")
 	}
-	
-	if window.ctrl {
-		write_string(b, "ctrl ")
-	}
-	
-	if window.shift {
-		write_string(b, "shift ")
-	}
-	
-	if window.alt {
-		write_string(b, "alt ")
-	}
-	
-	key_name := sdl.GetKeyName(key.keysym.sym)
-	write_string(b, string(key_name))
 
-	ok = true	
-	res = to_lower(to_string(b^), context.temp_allocator)
+	if window.ctrl {
+		strings.write_string(b, "ctrl ")
+	}
+
+	if window.shift {
+		strings.write_string(b, "shift ")
+	}
+
+	if window.alt {
+		strings.write_string(b, "alt ")
+	}
+
+	key_name := sdl.GetKeyName(key.keysym.sym)
+	strings.write_string(b, string(key_name))
+
+	ok = true
+	res = strings.to_lower(strings.to_string(b^), context.temp_allocator)
 	return
 }
 
@@ -1188,23 +1205,26 @@ window_drop_iter :: proc(window: ^Window) -> (path: string, ok: bool) {
 
 window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 	#partial switch e.type {
-		case .WINDOWEVENT: {
+	case .WINDOWEVENT:
+		{
 			// log.info("window id", e.window.windowID, window.w_id == e.window.windowID)
-			
+
 			if window.w_id != e.window.windowID {
 				return
 			}
 
 			#partial switch e.window.event {
-				case .CLOSE: {
+			case .CLOSE:
+				{
 					window_try_quit(window)
 				}
 
-				case .RESIZED: {
+			case .RESIZED:
+				{
 					window.width = int(e.window.data1)
 					window.widthf = f32(window.width)
 					window.height = int(e.window.data2)
-					window.heightf = f32(window.height)	
+					window.heightf = f32(window.height)
 					window.rect = rect_wh(0, 0, window.width, window.height)
 					window.update_next = true
 					menu_close(window)
@@ -1214,8 +1234,9 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 					}
 				}
 
-				// called on first shown
-				case .EXPOSED: {
+			// called on first shown
+			case .EXPOSED:
+				{
 					if window.update_before != nil {
 						window->update_before()
 					}
@@ -1228,7 +1249,8 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 					}
 				}
 
-				case .FOCUS_GAINED: {
+			case .FOCUS_GAINED:
+				{
 					if window != nil && window.on_focus_gained != nil {
 						window->on_focus_gained()
 					}
@@ -1242,7 +1264,8 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			}
 		}
 
-		case .KEYDOWN: {
+	case .KEYDOWN:
+		{
 			if e.key.windowID != window.w_id {
 				return
 			}
@@ -1258,20 +1281,21 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			}
 		}
 
-		case .TEXTINPUT: {
+	case .TEXTINPUT:
+		{
 			if e.text.windowID != window.w_id {
 				return
 			}
 
 			if window.ignore_text_input {
 				return
-			} 
+			}
 
 			text := string(cstring(&e.text.text[0]))
 			state, codepoint: rune
 			length: int
 
-			for i in 0..<len(text) {
+			for i in 0 ..< len(text) {
 				if cutf8.decode(&state, &codepoint, text[i]) {
 					length = i
 					break
@@ -1282,7 +1306,8 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			window_input_event(window, .Unicode_Insertion, 0, &codepoint)
 		}
 
-		case .MOUSEWHEEL: {
+	case .MOUSEWHEEL:
+		{
 			if e.wheel.windowID != window.w_id {
 				return
 			}
@@ -1302,7 +1327,8 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			}
 		}
 
-		case .MOUSEMOTION: {
+	case .MOUSEMOTION:
+		{
 			if e.motion.windowID != window.w_id {
 				return
 			}
@@ -1311,28 +1337,30 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			window.cursor_y_old = window.cursor_y
 			window.cursor_x = int(e.motion.x)
 			window.cursor_y = int(e.motion.y)
-			window.cursor_motion = { int(e.motion.xrel), int(e.motion.yrel) }
+			window.cursor_motion = {int(e.motion.xrel), int(e.motion.yrel)}
 			window_input_event(window, .Mouse_Move)
 		}
 
-		case .MOUSEBUTTONDOWN: {
+	case .MOUSEBUTTONDOWN:
+		{
 			if e.button.windowID != window.w_id {
 				return
 			}
 
 			if e.button.button == sdl.BUTTON_LEFT {
-				window.down_left = { int(e.button.x), int(e.button.y) }
+				window.down_left = {int(e.button.x), int(e.button.y)}
 				window_input_event(window, .Left_Down, int(e.button.clicks))
 			} else if e.button.button == sdl.BUTTON_MIDDLE {
-				window.down_middle = { int(e.button.x), int(e.button.y) }
+				window.down_middle = {int(e.button.x), int(e.button.y)}
 				window_input_event(window, .Middle_Down, int(e.button.clicks))
 			} else if e.button.button == sdl.BUTTON_RIGHT {
-				window.down_right = { int(e.button.x), int(e.button.y) }
+				window.down_right = {int(e.button.x), int(e.button.y)}
 				window_input_event(window, .Right_Down, int(e.button.clicks))
 			}
 		}
 
-		case .MOUSEBUTTONUP: {
+	case .MOUSEBUTTONUP:
+		{
 			if e.button.windowID != window.w_id {
 				return
 			}
@@ -1346,8 +1374,9 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 			}
 		}
 
-		// write indices & text content linearly, not send over message!
-		case .DROPBEGIN, .DROPCOMPLETE, .DROPFILE, .DROPTEXT: {
+	// write indices & text content linearly, not send over message!
+	case .DROPBEGIN, .DROPCOMPLETE, .DROPFILE, .DROPTEXT:
+		{
 			if e.drop.windowID != window.w_id {
 				return
 			}
@@ -1376,7 +1405,7 @@ window_handle_event :: proc(window: ^Window, e: ^sdl.Event) {
 }
 
 gs_windows_iter_head :: proc() -> dll.Iterator(Window) {
-	return dll.iterator_head(gs.windows_list,  Window, "node")
+	return dll.iterator_head(gs.windows_list, Window, "node")
 }
 
 gs_allocator :: proc() -> mem.Allocator {
@@ -1391,7 +1420,7 @@ gs_display_total_bounds :: proc() -> (width, height: int) {
 	rect: sdl.Rect
 	displays_count := sdl.GetNumVideoDisplays()
 
-	for i in 0..<displays_count {
+	for i in 0 ..< displays_count {
 		sdl.GetDisplayBounds(i, &rect)
 		width += int(rect.w)
 		height += int(rect.h)
@@ -1408,14 +1437,13 @@ gs_display_dpi :: proc(index: int) -> (ddpi, hdpi, vdpi: f32, ok: bool) {
 
 gs_init :: proc() {
 	gs = new(Global_State)
-	using gs
-	running = true
+	gs.running = true
 
 	when TRACK_MEMORY {
 		mem.tracking_allocator_init(&track, context.allocator)
 	}
 	context.allocator = gs_allocator()
-	
+
 	err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO)
 	if err != 0 {
 		fmt.panicf("SDL2: failed to initialize %d", err)
@@ -1427,27 +1455,27 @@ gs_init :: proc() {
 	sdl.SetHint(sdl.HINT_MOUSE_FOCUS_CLICKTHROUGH, "1") // mouse clickable 
 
 	// create cursors
-	cursors[.Arrow] = sdl.CreateSystemCursor(.ARROW)
-	cursors[.IBeam] = sdl.CreateSystemCursor(.IBEAM)
-	cursors[.Hand] = sdl.CreateSystemCursor(.HAND)
-	cursors[.Hand_Drag] = sdl.CreateSystemCursor(.SIZEALL)
-	cursors[.Resize_Horizontal] = sdl.CreateSystemCursor(.SIZEWE)
-	cursors[.Resize_Vertical] = sdl.CreateSystemCursor(.SIZENS)
-	cursors[.Crosshair] = sdl.CreateSystemCursor(.CROSSHAIR)
+	gs.cursors[.Arrow] = sdl.CreateSystemCursor(.ARROW)
+	gs.cursors[.IBeam] = sdl.CreateSystemCursor(.IBEAM)
+	gs.cursors[.Hand] = sdl.CreateSystemCursor(.HAND)
+	gs.cursors[.Hand_Drag] = sdl.CreateSystemCursor(.SIZEALL)
+	gs.cursors[.Resize_Horizontal] = sdl.CreateSystemCursor(.SIZEWE)
+	gs.cursors[.Resize_Vertical] = sdl.CreateSystemCursor(.SIZENS)
+	gs.cursors[.Crosshair] = sdl.CreateSystemCursor(.CROSSHAIR)
 
 	// get pref path
 	{
 		path := sdl.GetPrefPath("todool", "")
 		if path != nil {
-			pref_path = strings.clone_from_cstring(path)
+			gs.pref_path = strings.clone_from_cstring(path)
 			sdl.free(rawptr(path))
 		} else {
 			when os.OS == .Linux {
 				pref_path = ".\\"
-			} 
+			}
 
 			when os.OS == .Windows {
-				pref_path = "./"
+				gs.pref_path = "./"
 			}
 		}
 	}
@@ -1455,25 +1483,27 @@ gs_init :: proc() {
 	{
 		path := sdl.GetBasePath()
 		if path != nil {
-			base_path = strings.clone_from_cstring(path)
+			gs.base_path = strings.clone_from_cstring(path)
 			sdl.free(rawptr(path))
-		} 
+		}
 	}
 
 	// use file logger on release builds
-	log_path = strings.clone(bpath_temp("todool.log"))
+	gs.log_path = strings.clone(bpath_temp("todool.log"))
 
 	// write only, create new file if not exists, truncate file at start
 	when os.OS == .Linux {
 		// all rights on linux
 		mode := 0o0777
-		log_file_handle, errno := os.open(log_path, os.O_WRONLY | os.O_CREATE | os.O_APPEND, mode)
+		//FIXME: Handle error.
+		log_file_handle, _ := os.open(log_path, os.O_WRONLY | os.O_CREATE | os.O_APPEND, mode)
 	} else {
-		log_file_handle, errno := os.open(log_path, os.O_WRONLY | os.O_CREATE | os.O_APPEND)
+		//FIXME: Handle error.
+		log_file_handle, _ := os.open(gs.log_path, os.O_WRONLY | os.O_CREATE | os.O_APPEND)
 	}
 
-	logger = log.create_file_logger(log_file_handle)
-	context.logger = logger
+	gs.logger = log.create_file_logger(log_file_handle)
+	context.logger = gs.logger
 
 	{
 		linked: sdl.version
@@ -1481,8 +1511,8 @@ gs_init :: proc() {
 		log.infof("SDL2: Linked Version %d.%d.%d", linked.major, linked.minor, linked.patch)
 	}
 
-	fontstash.Init(&fc, 500, 500, .TOPLEFT)
-	fc.callbackResize = proc(data: rawptr, w, h: int) {
+	fontstash.Init(&gs.fc, 500, 500, .TOPLEFT)
+	gs.fc.callbackResize = proc(data: rawptr, w, h: int) {
 		if data != nil {
 			// regenerate the texture on all windows
 			iter := gs_windows_iter_head()
@@ -1492,7 +1522,7 @@ gs_init :: proc() {
 			}
 		}
 	}
-	fc.callbackUpdate = proc(data: rawptr, dirty_rect: [4]f32, texture_data: rawptr) {
+	gs.fc.callbackUpdate = proc(data: rawptr, dirty_rect: [4]f32, texture_data: rawptr) {
 		// update the texture on all windows
 		if data != nil {
 			// NOTE need to update all window textures apparently
@@ -1506,16 +1536,16 @@ gs_init :: proc() {
 		}
 	}
 
-	animating = make([dynamic]^Element, 0, 32)
-	copy_builder = strings.builder_make(0, mem.Kilobyte)
+	gs.animating = make([dynamic]^Element, 0, 32)
+	gs.copy_builder = strings.builder_make(0, mem.Kilobyte)
 
 	// audio
 	{
 		// audio support
-		wanted_flags := mix.InitFlags {}
-		init_flags := transmute(mix.InitFlags) mix.Init(wanted_flags)
+		wanted_flags := mix.InitFlags{}
+		init_flags := transmute(mix.InitFlags)mix.Init(wanted_flags)
 		gs.audio_ok = true
-		
+
 		if wanted_flags != init_flags {
 			log.error("MIXER: couldnt load audio format")
 			gs.audio_ok = false
@@ -1542,10 +1572,10 @@ gs_init :: proc() {
 		return interval
 	}
 
-	window_hovering_timer = sdl.AddTimer(500, window_check_hover_callback, nil)
-	strings.builder_init(&cstring_builder, 0, 128)
+	gs.window_hovering_timer = sdl.AddTimer(500, window_check_hover_callback, nil)
+	strings.builder_init(&gs.cstring_builder, 0, 128)
 
-	stored_images = make([dynamic]Stored_Image, 0, 8)
+	gs.stored_images = make([dynamic]Stored_Image, 0, 8)
 	clipboard_get_with_builder()
 }
 
@@ -1555,7 +1585,7 @@ gs_check_leaks :: proc(ta: ^mem.Tracking_Allocator) {
 			fmt.eprintf("%v LEAK: %dB\n", v.location, v.size)
 		}
 	}
-	
+
 	if len(ta.bad_free_array) > 0 {
 		for v in ta.bad_free_array {
 			fmt.eprintf("%v BAD FREE PTR: %p\n", v.location, v.memory)
@@ -1564,28 +1594,26 @@ gs_check_leaks :: proc(ta: ^mem.Tracking_Allocator) {
 }
 
 gs_destroy :: proc() {
-	using gs
-
 	for index in Sound_Index {
-		path := sound_paths[index]
+		path := gs.sound_paths[index]
 		if path != "" {
 			delete(path)
 		}
 	}
 
-	if font_regular_path != "" {
-		delete(font_regular_path)
-	} 
-
-	if font_bold_path != "" {
-		delete(font_bold_path)
+	if gs.font_regular_path != "" {
+		delete(gs.font_regular_path)
 	}
 
-	delete(animating)
-	delete(copy_builder.buf)
-	delete(cstring_builder.buf)
+	if gs.font_bold_path != "" {
+		delete(gs.font_bold_path)
+	}
 
-	sdl.RemoveTimer(window_hovering_timer)
+	delete(gs.animating)
+	delete(gs.copy_builder.buf)
+	delete(gs.cstring_builder.buf)
+
+	sdl.RemoveTimer(gs.window_hovering_timer)
 
 	if gs.stored_image_thread != nil {
 		thread.terminate(gs.stored_image_thread, 0)
@@ -1594,28 +1622,28 @@ gs_destroy :: proc() {
 	}
 	delete(gs.stored_images)
 
-	for sound in sounds {
+	for sound in gs.sounds {
 		mix.FreeChunk(sound)
 	}
 
 	mix.Quit()
-	fontstash.Destroy(&fc)
+	fontstash.Destroy(&gs.fc)
 
 	// based on mode
-	log.destroy_file_logger(&logger)
-	delete(log_path)
-	delete(pref_path)
-	delete(base_path)
+	log.destroy_file_logger(gs.logger)
+	delete(gs.log_path)
+	delete(gs.pref_path)
+	delete(gs.base_path)
 
 	when TRACK_MEMORY {
 		gs_check_leaks(&track)
 		mem.tracking_allocator_destroy(&track)
-	}	
+	}
 
 	// reset allocator after being done!
 	context.allocator = runtime.default_allocator()
 
-	for cursor in cursors {
+	for cursor in gs.cursors {
 		sdl.FreeCursor(cursor)
 	}
 
@@ -1641,7 +1669,7 @@ gs_string_to_cstring :: proc(text: string) -> cstring {
 }
 
 window_flush_mouse_state :: proc(window: ^Window) {
-	for i in 1..<4 {
+	for i in 1 ..< 4 {
 		window_set_pressed(window, nil, i)
 	}
 }
@@ -1654,7 +1682,7 @@ gs_flush_events :: proc() {
 gs_process_events :: proc() {
 	// set frame start after waiting
 	gs.frame_start = sdl.GetPerformanceCounter()
-	
+
 	// query ctrl, shift, alt state
 	ctrl, shift, alt, super: bool
 	num: i32
@@ -1716,7 +1744,7 @@ gs_dt_end :: proc() -> (elapsed_ms: f64) {
 
 gs_message_loop :: proc() {
 	context.logger = gs.logger
-	
+
 	for gs.running {
 		free_all(context.temp_allocator)
 
@@ -1752,13 +1780,14 @@ gs_message_loop :: proc() {
 			gs_process_events()
 		} else {
 			// wait for event to arive
-			available := sdl.WaitEvent(nil)
+			//TODO: "available" declared but not used.
+			_ = sdl.WaitEvent(nil)
 			gs_process_events()
 		}
 
 		// repaint all of the window
 		gs_draw_and_cleanup()
-		
+
 		if !gs.running {
 			break
 		}
@@ -1813,7 +1842,7 @@ window_focused_shown :: proc(window: ^Window) -> bool {
 	}
 
 	p := window.focused
-	
+
 	for p != nil {
 		if .Hide in p.flags {
 			return false
@@ -1854,7 +1883,7 @@ window_draw :: proc(window: ^Window) {
 }
 
 gs_draw_and_cleanup :: proc() {
-	context.logger = gs.logger 
+	context.logger = gs.logger
 
 	window_count: int
 	iter := gs_windows_iter_head()
@@ -1871,7 +1900,7 @@ gs_draw_and_cleanup :: proc() {
 		} else if window.update_next {
 			window_draw(window)
 		}
-		
+
 		window_count += 1
 	}
 
@@ -1883,7 +1912,7 @@ gs_draw_and_cleanup :: proc() {
 
 gs_destroy_all_windows :: proc() {
 	iter := gs_windows_iter_head()
-	
+
 	for w in dll.iterate_next(&iter) {
 		window_destroy(w)
 	}
@@ -1891,7 +1920,7 @@ gs_destroy_all_windows :: proc() {
 
 gs_window_count :: proc() -> (res: int) {
 	iter := gs_windows_iter_head()
-	for w in dll.iterate_next(&iter) {
+	for _ in dll.iterate_next(&iter) {
 		res += 1
 	}
 	return
@@ -1906,7 +1935,7 @@ gs_window_count :: proc() -> (res: int) {
 // }
 
 window_border_set :: proc(window: ^Window, state: bool) {
-	sdl.SetWindowBordered(window.w, cast(sdl.bool) state)
+	sdl.SetWindowBordered(window.w, cast(sdl.bool)state)
 }
 
 window_fullscreen_toggle :: proc(window: ^Window) {
@@ -1936,10 +1965,10 @@ clipboard_get_with_builder :: proc() -> string {
 	text := sdl.GetClipboardText()
 	b := &gs.copy_builder
 	strings.builder_reset(b)
-	raw := (transmute(mem.Raw_Cstring) text).data
+	raw := (transmute(mem.Raw_Cstring)text).data
 	resize(&b.buf, len(text))
 	mem.copy(raw_data(b.buf), raw, len(text))
-	sdl.free(cast(rawptr) text)
+	sdl.free(cast(rawptr)text)
 	return strings.to_string(b^)
 }
 
@@ -1947,7 +1976,7 @@ clipboard_get_with_builder :: proc() -> string {
 // stops at newline
 clipboard_get_with_builder_till_newline :: proc() -> string {
 	ctext := sdl.GetClipboardText()
-	defer sdl.free(cast(rawptr) ctext)
+	defer sdl.free(cast(rawptr)ctext)
 	text := string(ctext)
 
 	b := &gs.copy_builder
@@ -1956,9 +1985,9 @@ clipboard_get_with_builder_till_newline :: proc() -> string {
 	ds: cutf8.Decode_State
 	for codepoint in cutf8.ds_iter(&ds, text) {
 		if codepoint == '\n' {
-			break	
+			break
 		}
-		
+
 		strings.write_rune(b, codepoint)
 	}
 
@@ -1995,7 +2024,7 @@ sdl_push_empty_event :: #force_inline proc() {
 clipboard_check_changes :: proc() -> bool {
 	if clipboard_has_content() {
 		text := sdl.GetClipboardText()
-		
+
 		if string(text) != strings.to_string(gs.copy_builder) {
 			return true
 		}
@@ -2008,7 +2037,7 @@ clipboard_check_changes :: proc() -> bool {
 // arena
 //////////////////////////////////////////////
 
-@(deferred_out=arena_scoped_end)
+@(deferred_out = arena_scoped_end)
 arena_scoped :: proc(cap: int) -> (arena: mem.Arena, backing: []byte) {
 	backing = make([]byte, cap)
 	mem.arena_init(&arena, backing)
@@ -2082,23 +2111,27 @@ menu_visible :: proc(window: ^Window) -> bool {
 }
 
 menu_init_or_replace_new :: proc(
-	window: ^Window, 
-	flags: Element_Flags, 
+	window: ^Window,
+	flags: Element_Flags,
 	menu_info: int,
-) -> (menu: ^Panel_Floaty) {
+) -> (
+	menu: ^Panel_Floaty,
+) {
 	if window.menu_info == 0 || window.menu_info != menu_info {
 		menu = menu_init_or_replace(window, flags, menu_info)
-	}	
+	}
 
 	return
 }
 
 // replace existing menu
 menu_init_or_replace :: proc(
-	window: ^Window, 
-	flags: Element_Flags, 
+	window: ^Window,
+	flags: Element_Flags,
 	menu_info: int = 0,
-) -> (menu: ^Panel_Floaty) {
+) -> (
+	menu: ^Panel_Floaty,
+) {
 	if window.menu == nil {
 		return menu_init(window, flags, menu_info)
 	} else {
@@ -2108,15 +2141,17 @@ menu_init_or_replace :: proc(
 }
 
 menu_init :: proc(
-	window: ^Window, 
-	flags: Element_Flags, 
+	window: ^Window,
+	flags: Element_Flags,
 	menu_info: int = -1,
 	menu_filter := false,
-) -> (menu: ^Panel_Floaty) {
+) -> (
+	menu: ^Panel_Floaty,
+) {
 	// strings.builder_reset(&window.menu_builder)
 	window.menu_info = menu_info
 	window.menu_filter = menu_filter
-	
+
 	menu = panel_floaty_init(&window.element, flags)
 	menu.x = window.cursor_x
 	menu.y = window.cursor_y
@@ -2126,15 +2161,16 @@ menu_init :: proc(
 
 // add a basic button with auto closing
 menu_add_item :: proc(
-	menu: ^Panel_Floaty, 
+	menu: ^Panel_Floaty,
 	flags: Element_Flags,
 	text: string,
-	invoke: proc(^Button, rawptr),
+	invoke: proc(_: ^Button, _: rawptr),
 	data: rawptr = nil,
 ) {
 	button := button_init(menu.panel, flags, text)
 	button.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		button := cast(^Button) element
+		//TODO: Declared but not used.
+		// button := cast(^Button) element
 
 		if msg == .Clicked {
 			menu_close(element.window)
@@ -2160,7 +2196,7 @@ menu_show_position :: proc(menu: ^Panel_Floaty) {
 	full := menu.window.rect
 	menu.x = clamp(menu.x, margin, full.r - menu.width - margin)
 	menu.y = clamp(menu.y, margin, full.b - menu.height - margin)
-	element_repaint(menu)		
+	element_repaint(menu)
 }
 
 // true wether the requested element is from the menu tree
@@ -2170,7 +2206,7 @@ element_is_from_menu :: proc(window: ^Window, element: ^Element) -> bool {
 	}
 
 	p := element
-	
+
 	for p != nil {
 		if p == &window.menu.panel.element {
 			return true
@@ -2192,16 +2228,22 @@ Font_Options :: struct {
 }
 
 efont_size :: proc(element: ^Element) -> int {
-	scaled_size := f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) * SCALE * 10
+	scaled_size :=
+		f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) *
+		SCALE *
+		10
 	return int(i16(scaled_size) / 10)
-}	
+}
 
 task_font_size :: proc(element: ^Element) -> int {
-	scaled_size := f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) * TASK_SCALE * 10
+	scaled_size :=
+		f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) *
+		TASK_SCALE *
+		10
 	return int(i16(scaled_size) / 10)
 	// scaled_size := f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) * TASK_SCALE
 	// return int(scaled_size)
-}	
+}
 
 fcs_icon :: proc(scaling: f32) -> int {
 	fcs_size(DEFAULT_ICON_SIZE * scaling)
@@ -2303,7 +2345,7 @@ fcs_pop :: #force_inline proc() {
 
 // counts first beginning tabs
 tabs_count :: proc(text: string) -> (count: int) {
-	for i in 0..<len(text) {
+	for i in 0 ..< len(text) {
 		if text[i] == '\t' {
 			count += 1
 		} else {

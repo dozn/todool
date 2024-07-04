@@ -1,29 +1,25 @@
 package src
 
-import "core:log"
+import "base:runtime"
 import "core:fmt"
-import "core:math/rand"
-import "core:math/ease"
-import "core:runtime"
 import "core:strings"
 import "core:time"
 import sdl "vendor:sdl2"
 
 Pomodoro_Celebration :: struct {
-	x, y: f32,
+	x, y:  f32,
 	color: Color,
-	skip: bool,
+	skip:  bool,
 }
 
 Pomodoro :: struct {
-	index: int, // 0-2
-	timer_id: sdl.TimerID,
-	stopwatch: time.Stopwatch,
-	accumulated: time.Duration,
-
+	index:                    int, // 0-2
+	timer_id:                 sdl.TimerID,
+	stopwatch:                time.Stopwatch,
+	accumulated:              time.Duration,
 	celebration_goal_reached: bool,
-	celebrating: bool,
-	celebration: []Pomodoro_Celebration,
+	celebrating:              bool,
+	celebration:              []Pomodoro_Celebration,
 }
 pomodoro: Pomodoro
 
@@ -42,7 +38,7 @@ pomodoro_celebration_spawn :: proc(x, y: f32) {
 	// if !pomodoro.celebrating {
 	// 	pomodoro.celebrating = true
 	// 	// fmt.eprintln("called", mmpp.bounds)
-		
+
 	// 	for c in &pomodoro.celebration {
 	// 		c.skip = false
 	// 		c.x	= x
@@ -64,14 +60,14 @@ pomodoro_celebration_render :: proc(target: ^Render_Target) {
 	if pomodoro.celebrating {
 		draw_count := 0
 
-		for c in &pomodoro.celebration {
+		for &c in &pomodoro.celebration {
 			if c.skip {
 				continue
 			}
 
 			draw_count += 1
 			rect := rect_wh(int(c.x), int(c.y), 10, 10)
-			render_rect(target, rect, c.color, ROUNDNESS)	
+			render_rect(target, rect, c.color, ROUNDNESS)
 
 			if int(c.y) >= app.mmpp.bounds.b {
 				c.skip = true
@@ -86,11 +82,11 @@ pomodoro_celebration_render :: proc(target: ^Render_Target) {
 }
 
 // NOTE same as before, just return diff
-time_stop_stopwatch :: proc(using stopwatch: ^time.Stopwatch) -> (diff: time.Duration) {
-	if running {
-		diff = time.tick_diff(_start_time, time.tick_now())
-		_accumulation += diff
-		running = false
+time_stop_stopwatch :: proc(stopwatch: ^time.Stopwatch) -> (diff: time.Duration) {
+	if stopwatch.running {
+		diff = time.tick_diff(stopwatch._start_time, time.tick_now())
+		stopwatch._accumulation += diff
+		stopwatch.running = false
 	}
 
 	return
@@ -132,7 +128,7 @@ pomodoro_stopwatch_hot_toggle :: proc(du: u32) {
 		element_hide(sb.stats.pomodoro_reset, !pomodoro.stopwatch.running)
 		element_repaint(app.mmpp)
 	}
-	
+
 	value, ok := du_value(du)
 	if !ok {
 		return
@@ -145,7 +141,7 @@ pomodoro_stopwatch_hot_toggle :: proc(du: u32) {
 	}
 
 	pomodoro.index = index
-	
+
 	if pomodoro.stopwatch.running {
 		pomodoro_stopwatch_reset()
 	}
@@ -163,16 +159,19 @@ pomodoro_stopwatch_diff :: proc() -> time.Duration {
 
 // writes the pomodoro label
 pomodoro_label_format :: proc() {
-	duration := pomodoro_stopwatch_diff()
-	_, minutes, seconds := duration_clock(duration)
+	//TODO: Declared but not used.
+	// duration := pomodoro_stopwatch_diff()
+	//TODO: Declared but not used.
+	// _, minutes, seconds := duration_clock(duration)
 
 	// TODO could check for diff and only repaint then!
 	b := &sb.pomodoro_label.builder
 	strings.builder_reset(b)
-	text := fmt.sbprintf(b, "%2d:%2d", int(minutes), int(seconds))
+	//TODO: Declared but not used.
+	// text := fmt.sbprintf(b, "%2d:%2d", int(minutes), int(seconds))
 	element_repaint(sb.pomodoro_label)
 	// log.info("PRINTED", text, duration)
-}		
+}
 
 // on interval update the pomodoro label
 pomodoro_timer_callback :: proc "c" (interval: u32, data: rawptr) -> u32 {
@@ -182,47 +181,56 @@ pomodoro_timer_callback :: proc "c" (interval: u32, data: rawptr) -> u32 {
 	if pomodoro.stopwatch.running {
 		pomodoro_label_format()
 		sdl_push_empty_event()
-	} 
+	}
 
 	return interval
 }
 
 // get time from slider
 pomodoro_time_index :: proc(index: int) -> (position: int) {
-	index := clamp(index, 0, 2)
+	index := index
+	index = clamp(index, 0, 2)
 	switch index {
-		case 0: position = sb.stats.work.position
-		case 1: position = sb.stats.short_break.position
-		case 2: position = sb.stats.long_break.position
+	case 0:
+		position = sb.stats.work.position
+	case 1:
+		position = sb.stats.short_break.position
+	case 2:
+		position = sb.stats.long_break.position
 	}
 	return
 }
 
 pomodoro_button_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^Button) element
+	button := cast(^Button)element
 
 	pomodoro_index_from :: proc(builder: strings.Builder) -> int {
 		text := strings.to_string(builder)
-		
+
 		switch text {
-			case "1": return 0
-			case "2": return 1
-			case "3": return 2
-		}			
+		case "1":
+			return 0
+		case "2":
+			return 1
+		case "3":
+			return 2
+		}
 
 		unimplemented("gotta add pomodoro index")
 	}
 
 	#partial switch msg {
-		case .Button_Highlight: {
-			color := cast(^Color) dp
+	case .Button_Highlight:
+		{
+			color := cast(^Color)dp
 			index := pomodoro_index_from(button.builder)
 			selected := index == pomodoro.index
 			color^ = selected ? theme.text_default : theme.text_blank
 			return selected ? 1 : 2
 		}
 
-		case .Clicked: {
+	case .Clicked:
+		{
 			pomodoro.index = pomodoro_index_from(button.builder)
 			pomodoro_stopwatch_reset()
 			pomodoro_label_format()

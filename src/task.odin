@@ -1,23 +1,15 @@
 package src
 
-import "core:os"
-import "core:runtime"
+import "base:intrinsics"
+import "base:runtime"
 import "core:c/libc"
-import "core:io"
-import "core:mem"
-import "core:strconv"
 import "core:fmt"
-import "core:unicode"
-import "core:strings"
 import "core:log"
 import "core:math"
-import "core:math/ease"
-import "core:intrinsics"
-import "core:slice"
-import "core:reflect"
-import "core:time"
-import "core:thread"
-import "cutf8"
+import "core:mem"
+import "core:os"
+import "core:strconv"
+import "core:strings"
 import "vendor:fontstash"
 
 Task_State_Progression :: enum {
@@ -27,14 +19,14 @@ Task_State_Progression :: enum {
 }
 
 Vim_State :: struct {
-	insert_mode: bool,
-	
+	insert_mode:   bool,
+
 	// return to same task if still waiting for move break
 	// left /right
-	rep_task: ^Task,
+	rep_task:      ^Task,
 	rep_direction: int, // direction -1 = left, 1 = right
-	rep_cam_x: f32,
-	rep_cam_y: f32,
+	rep_cam_x:     f32,
+	rep_cam_y:     f32,
 }
 vim: Vim_State
 
@@ -45,116 +37,114 @@ DRAG_CIRCLE :: 30
 SEPARATOR_SIZE :: 20
 
 Caret_State :: struct {
-	rect: RectI,
-
-	lerp_speed_y: f32,
-	lerp_speed_x: f32,
+	rect:              RectI,
+	lerp_speed_y:      f32,
+	lerp_speed_x:      f32,
 
 	// last frames to render
-	motion_last_x: f32,
-	motion_last_y: f32,
-	motion_count: int,
-	motion_skip: bool,
+	motion_last_x:     f32,
+	motion_last_y:     f32,
+	motion_count:      int,
+	motion_skip:       bool,
 	motion_last_frame: bool,
 
 	// outline follow
-	outline_current: RectF,
-	outline_goal: RectF,
-
-	alpha_forwards: bool,
-	alpha: f32,
+	outline_current:   RectF,
+	outline_goal:      RectF,
+	alpha_forwards:    bool,
+	alpha:             f32,
 }
 
 App :: struct {
-	pool: Task_Pool,
-	copy_state: Copy_State,
-	last_was_task_copy: bool,
-	caret: Caret_State,
+	pool:                      Task_Pool,
+	copy_state:                Copy_State,
+	last_was_task_copy:        bool,
+	caret:                     Caret_State,
 
 	// progress bars
-	task_state_progression: Task_State_Progression,
-	progressbars_alpha: f32, // animation
-	progressbars_goal: f32, // goal
-	main_thread_running: bool,
+	task_state_progression:    Task_State_Progression,
+	progressbars_alpha:        f32, // animation
+	progressbars_goal:         f32, // goal
+	main_thread_running:       bool,
 
 	// keymap special
-	keymap_vim_normal: Keymap,
-	keymap_vim_insert: Keymap,
+	keymap_vim_normal:         Keymap,
+	keymap_vim_insert:         Keymap,
 
 	// last save
-	last_save_location: strings.Builder,
-	um_task: Undo_Manager,
-	um_search: Undo_Manager,
-	um_goto: Undo_Manager,
-	um_sidebar_tags: Undo_Manager,
+	last_save_location:        strings.Builder,
+	um_task:                   Undo_Manager,
+	um_search:                 Undo_Manager,
+	um_goto:                   Undo_Manager,
+	um_sidebar_tags:           Undo_Manager,
 
 	// ui state
-	task_menu_bar: ^Menu_Bar,
-	panel_info: ^Panel,
-	mmpp: ^Mode_Panel,
-	custom_split: ^Custom_Split,
-	window_main: ^Window,
+	task_menu_bar:             ^Menu_Bar,
+	panel_info:                ^Panel,
+	mmpp:                      ^Mode_Panel,
+	custom_split:              ^Custom_Split,
+	window_main:               ^Window,
 
 	// goto state
-	panel_goto: ^Panel_Floaty,
-	goto_saved_task_head: int,
-	goto_saved_task_tail: int,
+	panel_goto:                ^Panel_Floaty,
+	goto_saved_task_head:      int,
+	goto_saved_task_tail:      int,
 	goto_transition_animating: bool,
-	goto_transition_unit: f32,
-	goto_transition_hide: bool,
+	goto_transition_unit:      f32,
+	goto_transition_hide:      bool,
 
 	// font options used
-	font_options_header: Font_Options,
-	font_options_bold: Font_Options,
+	font_options_header:       Font_Options,
+	font_options_bold:         Font_Options,
 
 	// works in visible line space!
 	// gets used in key combs
-	task_head: int,
-	task_tail: int,
-	old_task_head: int,
-	old_task_tail: int,
-	
+	task_head:                 int,
+	task_tail:                 int,
+	old_task_head:             int,
+	old_task_tail:             int,
+
 	// scroll keeps
-	keep_task_position: Maybe(^Task),
-	keep_task_cam: Maybe(^Task),
-	keep_task_cam_rect: RectI,
+	keep_task_position:        Maybe(^Task),
+	keep_task_cam:             Maybe(^Task),
+	keep_task_cam_rect:        RectI,
 
 	// shadowing
-	task_shadow_alpha: f32,
+	task_shadow_alpha:         f32,
 
 	// drag state
-	drag_list: [dynamic]^Task,
-	drag_running: bool,
-	drag_index_at: int,
-	drag_goals: [3][2]f32,
-	drag_rect_lerp: RectF,
-	drag_circle: bool,
-	drag_circle_pos: [2]int,
+	drag_list:                 [dynamic]^Task,
+	drag_running:              bool,
+	drag_index_at:             int,
+	drag_goals:                [3][2]f32,
+	drag_rect_lerp:            RectF,
+	drag_circle:               bool,
+	drag_circle_pos:           [2]int,
 
 	// dirty file
-	dirty: int,
-	dirty_saved: int,
+	dirty:                     int,
+	dirty_saved:               int,
 
 	// line numbering
-	builder_line_number: strings.Builder,
+	builder_line_number:       strings.Builder,
 
 	// global storage instead of per task/box
-	rendered_glyphs: [dynamic]Rendered_Glyph,
-	rendered_glyphs_start: int,
-	wrapped_lines: [dynamic]string,
+	rendered_glyphs:           [dynamic]Rendered_Glyph,
+	rendered_glyphs_start:     int,
+	wrapped_lines:             [dynamic]string,
 
 	// pattern loading options
-	pattern_load_pattern: strings.Builder,
+	pattern_load_pattern:      strings.Builder,
 
 	// saving state
-	save_callback: proc(),
-	save_string: string,
+	save_callback:             proc(),
+	save_string:               string,
 
 	// focus
-	focus: struct {
-		root: ^Task, // hard set ptr
+	focus:                     struct {
+		root:       ^Task, // hard set ptr
 		start, end: int, // latest bounds
-		alpha: f32,
+		alpha:      f32,
 	},
 }
 app: ^App
@@ -173,7 +163,7 @@ app_init :: proc() -> (res: ^App) {
 	res.caret.lerp_speed_y = 1
 	res.caret.lerp_speed_x = 1
 	res.drag_rect_lerp = RECT_LERP_INIT
-	
+
 	strings.builder_init(&res.last_save_location, 0, 128)
 
 	keymap_init(&res.keymap_vim_normal, 64, 256)
@@ -278,15 +268,14 @@ app_filter_empty :: #force_inline proc() -> bool {
 // simple split from mode_panel to search bar
 Custom_Split :: struct {
 	using element: Element,
-	
 	image_display: ^Image_Display, // fullscreen display
-	vscrollbar: ^Scrollbar,
-	hscrollbar: ^Scrollbar,
+	vscrollbar:    ^Scrollbar,
+	hscrollbar:    ^Scrollbar,
 }
 
 // simply write task text with indentation into a builder
 task_write_text_indentation :: proc(b: ^strings.Builder, task: ^Task, indentation: int) {
-	for i in 0..<indentation {
+	for _ in 0 ..< indentation {
 		strings.write_byte(b, '\t')
 	}
 
@@ -294,17 +283,14 @@ task_write_text_indentation :: proc(b: ^strings.Builder, task: ^Task, indentatio
 	strings.write_byte(b, '\n')
 }
 
-task_head_tail_call_all :: proc(
-	data: rawptr,
-	call: proc(task: ^Task, data: rawptr), 
-) {
+task_head_tail_call_all :: proc(data: rawptr, call: proc(task: ^Task, data: rawptr)) {
 	// empty
 	if app.task_head == -1 {
 		return
 	}
 
 	low, high := task_low_and_high()
-	for i in low..<high + 1 {
+	for i in low ..< high + 1 {
 		task := app_task_filter(i)
 		call(task, data)
 	}
@@ -316,17 +302,14 @@ task_head_tail_clamp :: proc() {
 	app.task_tail = clamp(app.task_tail, 0, len(app.pool.filter) - 1)
 }
 
-task_head_tail_call :: proc(
-	data: rawptr,
-	call: proc(task: ^Task, data: rawptr), 
-) {
+task_head_tail_call :: proc(data: rawptr, call: proc(task: ^Task, data: rawptr)) {
 	// empty
 	if app.task_head == -1 || app.task_head == app.task_tail {
 		return
 	}
 
 	low, high := task_low_and_high()
-	for i in low..<high + 1 {
+	for i in low ..< high + 1 {
 		task := app_task_filter(i)
 		call(task, data)
 	}
@@ -358,74 +341,72 @@ Task_State :: enum u8 {
 	Normal,
 	Done,
 	Canceled,
-} 
+}
 
 Task :: struct {
-	element: Element,
-	
-	list_index: int, // NOTE set once
-	filter_index: int, // NOTE set in update
-	visible_parent: ^Task, // NOTE set in update
+	element:               Element,
+	list_index:            int, // NOTE set once
+	filter_index:          int, // NOTE set in update
+	visible_parent:        ^Task, // NOTE set in update
 
 	// elements
-	box: ^Task_Box,
-	button_fold: ^Icon_Button,
-	
+	box:                   ^Task_Box,
+	button_fold:           ^Icon_Button,
+
 	// optional elements
-	button_bookmark: ^Element,
-	button_link: ^Button,
-	image_display: ^Image_Display,
-	seperator: ^Task_Seperator,
-	time_date: ^Time_Date,
+	button_bookmark:       ^Element,
+	button_link:           ^Button,
+	image_display:         ^Image_Display,
+	seperator:             ^Task_Seperator,
+	time_date:             ^Time_Date,
 
 	// state
-	indentation: int,
-	indentation_smooth: f32,
+	indentation:           int,
+	indentation_smooth:    f32,
 	indentation_animating: bool,
-	state: Task_State,
-	state_unit: f32,
-	state_last: Task_State,
-	
+	state:                 Task_State,
+	state_unit:            f32,
+	state_last:            Task_State,
+
 	// tags state
-	tags: u8,
-	tags_rect: [8]RectI,
-	tag_hovered: int,
+	tags:                  u8,
+	tags_rect:             [8]RectI,
+	tag_hovered:           int,
 
 	// top animation
-	top_offset: f32, 
-	top_old: int,
-	top_animation_start: bool,
-	top_animating: bool,
-
-	filter_folded: bool, // toggle to freeze children
-	filter_children: [dynamic]int, // set every frame except when folded
-	state_count: [Task_State]int,
-	progress_animation: [Task_State]f32,
+	top_offset:            f32,
+	top_old:               int,
+	top_animation_start:   bool,
+	top_animating:         bool,
+	filter_folded:         bool, // toggle to freeze children
+	filter_children:       [dynamic]int, // set every frame except when folded
+	state_count:           [Task_State]int,
+	progress_animation:    [Task_State]f32,
 
 	// visible kanban outline - used for bounds check by kanban 
-	kanban_rect: RectI,
+	kanban_rect:           RectI,
 
 	// flags
-	removed: bool,
-	highlight: bool,
+	removed:               bool,
+	highlight:             bool,
 }
 
 Mode :: enum {
 	List,
 	Kanban,
 	// Agenda,
-}	
+}
 
 // element to custom layout based on internal mode
 Mode_Panel :: struct {
-	using element: Element,
-	mode: Mode,
-	cam: [Mode]Pan_Camera,
+	using element:  Element,
+	mode:           Mode,
+	cam:            [Mode]Pan_Camera,
 	zoom_highlight: f32,
 }
 
 // scoped version so you dont forget to call
-@(deferred_out=mode_panel_manager_end)
+@(deferred_out = mode_panel_manager_end)
 mode_panel_manager_scoped :: #force_inline proc() -> ^Undo_Manager {
 	return mode_panel_manager_begin()
 }
@@ -451,8 +432,8 @@ mode_panel_zoom_update :: proc() {
 mode_panel_zoom_animate :: proc() {
 	if app.mmpp != nil {
 		app.mmpp.zoom_highlight = 2
-	} 
-	
+	}
+
 	power_mode_clear()
 }
 
@@ -477,7 +458,7 @@ task_head_tail_flatten_keep :: proc() -> (task: ^Task) {
 task_indentation_child_count :: proc(task: ^Task, indentation: int) -> (total: int) {
 	for index in task.filter_children {
 		child := app_task_list(index)
-		
+
 		if child.indentation > indentation && child.visible_parent == task {
 			total += 1
 		}
@@ -500,8 +481,8 @@ task_low_and_high :: #force_inline proc() -> (low, high: int) {
 // LOW / HIGH iter for simple iteration
 LH_Iter :: struct {
 	low, high: int,
-	range: int,
-	index: int,
+	range:     int,
+	index:     int,
 }
 
 lh_iter_init :: proc() -> (res: LH_Iter) {
@@ -536,14 +517,14 @@ task_head_safe_index_indentation :: proc(init := -1) -> (index, indentation: int
 tasks_lowest_indentation :: proc(low, high: int) -> (res: int) {
 	res = max(int)
 
-	for i in low..<high + 1 {
+	for i in low ..< high + 1 {
 		res = min(res, app_task_filter(i).indentation)
 	}
-	
+
 	return
 }
 
-task_head_tail_check_begin :: proc(shift: bool) ->  bool {
+task_head_tail_check_begin :: proc(shift: bool) -> bool {
 	if !shift && app.task_head != app.task_tail {
 		app.task_tail = app.task_head
 		return false
@@ -561,15 +542,18 @@ task_head_tail_check_end :: #force_inline proc(shift: bool) {
 
 bookmark_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			render_rect(element.window.target, element.bounds, theme.text_default, ROUNDNESS)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 
-		case .Clicked: {
+	case .Clicked:
+		{
 			element_hide_toggle(element)
 		}
 	}
@@ -578,10 +562,11 @@ bookmark_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 }
 
 task_image_display_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	display := cast(^Image_Display) element
+	display := cast(^Image_Display)element
 
 	#partial switch msg {
-		case .Right_Down: {
+	case .Right_Down:
+		{
 			display.img = nil
 			display.clip = {}
 			display.bounds = {}
@@ -589,12 +574,14 @@ task_image_display_message :: proc(element: ^Element, msg: Message, di: int, dp:
 			return 1
 		}
 
-		case .Clicked: {
+	case .Clicked:
+		{
 			app.custom_split.image_display.img = display.img
 			element_repaint(display)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 	}
@@ -605,18 +592,25 @@ task_image_display_message :: proc(element: ^Element, msg: Message, di: int, dp:
 // set img or init display element
 task_set_img :: proc(task: ^Task, handle: ^Stored_Image) {
 	if task.image_display == nil {
-		task.image_display = image_display_init(&task.element, {}, handle, task_image_display_message, context.allocator)
+		task.image_display = image_display_init(
+			&task.element,
+			{},
+			handle,
+			task_image_display_message,
+			context.allocator,
+		)
 	} else {
 		task.image_display.img = handle
 	}
 }
 
 task_button_fold_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^Icon_Button) element
-	task := cast(^Task) button.parent
+	button := cast(^Icon_Button)element
+	task := cast(^Task)button.parent
 
 	#partial switch msg {
-		case .Clicked: {
+	case .Clicked:
+		{
 			manager := mode_panel_manager_scoped()
 			task_head_tail_push(manager)
 
@@ -627,7 +621,8 @@ task_button_fold_message :: proc(element: ^Element, msg: Message, di: int, dp: r
 			element_repaint(element)
 		}
 
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			// NOTE only change
 			button.icon = task.filter_folded ? .RIGHT_OPEN : .DOWN_OPEN
 
@@ -656,12 +651,14 @@ task_button_fold_message :: proc(element: ^Element, msg: Message, di: int, dp: r
 			return 1
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			w := icon_width(button.icon, TASK_SCALE)
 			return int(w + TEXT_MARGIN_HORIZONTAL * TASK_SCALE)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return task_font_size(element) + int(TEXT_MARGIN_VERTICAL * TASK_SCALE)
 		}
 	}
@@ -671,32 +668,40 @@ task_button_fold_message :: proc(element: ^Element, msg: Message, di: int, dp: r
 
 // button with link text
 task_button_link_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^Button) element
+	button := cast(^Button)element
 
 	#partial switch msg {
-		case .Left_Up: {
+	case .Left_Up:
+		{
 			open_link(strings.to_string(button.builder))
 			element_repaint(element)
 		}
 
-		case .Right_Up: {
+	case .Right_Up:
+		{
 			strings.builder_reset(&button.builder)
 			element_repaint(element)
 			return 1
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			fcs_task(element)
 			text := strings.to_string(button.builder)
-			width := max(int(50 * TASK_SCALE), string_width(text) + int(TEXT_MARGIN_HORIZONTAL * TASK_SCALE))
+			width := max(
+				int(50 * TASK_SCALE),
+				string_width(text) + int(TEXT_MARGIN_HORIZONTAL * TASK_SCALE),
+			)
 			return int(width)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return task_font_size(element) + int(TEXT_MARGIN_VERTICAL * TASK_SCALE)
 		}
 
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
@@ -710,7 +715,7 @@ task_button_link_message :: proc(element: ^Element, msg: Message, di: int, dp: r
 
 			// cut of string text
 			if app.mmpp.mode == .Kanban {
-				task := cast(^Task) element.parent
+				task := cast(^Task)element.parent
 				actual_width := rect_width(task.element.bounds) - 30
 				iter := fontstash.TextIterInit(&gs.fc, 0, 0, text)
 				q: fontstash.Quad
@@ -740,7 +745,13 @@ task_button_link_message :: proc(element: ^Element, msg: Message, di: int, dp: r
 // set link text or init link button
 task_set_link :: proc(task: ^Task, link: string) {
 	if task.button_link == nil {
-		task.button_link = button_init(&task.element, {}, link, task_button_link_message, context.allocator)
+		task.button_link = button_init(
+			&task.element,
+			{},
+			link,
+			task_button_link_message,
+			context.allocator,
+		)
 	} else {
 		b := &task.button_link.builder
 		strings.builder_reset(b)
@@ -750,7 +761,11 @@ task_set_link :: proc(task: ^Task, link: string) {
 
 // valid link 
 task_link_is_valid :: proc(task: ^Task) -> bool {
-	return task.button_link != nil && (.Hide not_in task.button_link.flags) && len(task.button_link.builder.buf) > 0
+	return(
+		task.button_link != nil &&
+		(.Hide not_in task.button_link.flags) &&
+		len(task.button_link.builder.buf) > 0 \
+	)
 }
 
 task_set_time_date :: proc(task: ^Task) {
@@ -759,12 +774,12 @@ task_set_time_date :: proc(task: ^Task) {
 	} else {
 		if .Hide in task.time_date.flags {
 			task.time_date.spawn_particles = true
-			task.time_date.flags -= { Element_Flag.Hide }
+			task.time_date.flags -= {Element_Flag.Hide}
 		} else {
 			if !time_date_update(task.time_date) {
 				task.time_date.spawn_particles = true
 			} else {
-				task.time_date.flags += { Element_Flag.Hide }
+				task.time_date.flags += {Element_Flag.Hide}
 			}
 		}
 	}
@@ -777,8 +792,14 @@ task_time_date_is_valid :: proc(task: ^Task) -> bool {
 // init bookmark if not yet
 task_bookmark_init_check :: proc(task: ^Task) {
 	if task.button_bookmark == nil {
-		task.button_bookmark = element_init(Element, &task.element, {}, bookmark_message, context.allocator)
-	} 
+		task.button_bookmark = element_init(
+			Element,
+			&task.element,
+			{},
+			bookmark_message,
+			context.allocator,
+		)
+	}
 }
 
 // init the bookmark and set hide flag
@@ -807,10 +828,11 @@ Task_Seperator :: struct {
 }
 
 task_separator_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	sep := cast(^Task_Seperator) element
+	sep := cast(^Task_Seperator)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 
 			rect := element.bounds
@@ -821,12 +843,14 @@ task_separator_message :: proc(element: ^Element, msg: Message, di: int, dp: raw
 			render_rect(target, rect, theme.text_default, ROUNDNESS)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.Hand)
 		}
 
-		case .Right_Up, .Left_Up: {
-			task := cast(^Task) sep.parent
+	case .Right_Up, .Left_Up:
+		{
+			task := cast(^Task)sep.parent
 			task_set_separator(task, false)
 			element_repaint(&task.element)
 			return 1
@@ -838,8 +862,14 @@ task_separator_message :: proc(element: ^Element, msg: Message, di: int, dp: raw
 
 task_set_separator :: proc(task: ^Task, show: bool) {
 	if task.seperator == nil {
-		task.seperator = element_init(Task_Seperator, &task.element, {}, task_separator_message, context.allocator)
-	} 
+		task.seperator = element_init(
+			Task_Seperator,
+			&task.element,
+			{},
+			task_separator_message,
+			context.allocator,
+		)
+	}
 
 	element_hide(task.seperator, !show)
 }
@@ -850,15 +880,11 @@ task_separator_is_valid :: proc(task: ^Task) -> bool {
 
 // raw creationg of a task
 // NOTE: need to set the parent afterward!
-task_init :: proc(
-	indentation: int,
-	text: string,
-	check_freed: bool,
-) -> (res: ^Task) { 
+task_init :: proc(indentation: int, text: string, check_freed: bool) -> (res: ^Task) {
 	res = task_pool_push_new(&app.pool, check_freed)
 
 	allocator := context.allocator
-	element := cast(^Element) res
+	element := cast(^Element)res
 	element.message_class = task_message
 
 	// just assign parent already
@@ -870,7 +896,13 @@ task_init :: proc(
 	res.indentation = indentation
 	res.indentation_smooth = f32(indentation)
 
-	res.button_fold = icon_button_init(&res.element, {}, .DOWN_OPEN, task_button_fold_message, allocator)
+	res.button_fold = icon_button_init(
+		&res.element,
+		{},
+		.DOWN_OPEN,
+		task_button_fold_message,
+		allocator,
+	)
 	res.box = task_box_init(&res.element, {}, text, allocator)
 	res.box.message_user = task_box_message_custom
 
@@ -878,39 +910,37 @@ task_init :: proc(
 }
 
 // push line element to panel middle with indentation
-task_push :: proc(
-	indentation: int, 
-	text := "", 
-	index_at := -1,
-) -> (res: ^Task) {
+task_push :: proc(indentation: int, text := "", index_at := -1) -> (res: ^Task) {
 	res = task_init(indentation, text, true)
 
 	if index_at == -1 || index_at >= len(app.pool.filter) {
 		append(&app.pool.filter, res.list_index)
 	} else {
 		inject_at(&app.pool.filter, index_at, res.list_index)
-	}	
+	}
 
 	return
 }
 
 task_insert_at :: proc(manager: ^Undo_Manager, index_at: int, res: ^Task) {
 	if index_at == -1 || index_at >= len(app.pool.filter) {
-		item := Undo_Item_Task_Append { res.list_index }
+		item := Undo_Item_Task_Append{res.list_index}
 		undo_task_append(manager, &item)
 	} else {
-		item := Undo_Item_Task_Insert_At { index_at, res.list_index }
+		item := Undo_Item_Task_Insert_At{index_at, res.list_index}
 		undo_task_insert_at(manager, &item)
-	}			
+	}
 }
 
 // push line element to panel middle with indentation
 task_push_undoable :: proc(
 	manager: ^Undo_Manager,
-	indentation: int, 
-	text: string, 
+	indentation: int,
+	text: string,
 	index_at: int,
-) -> (res: ^Task) {
+) -> (
+	res: ^Task,
+) {
 	res = task_init(indentation, text, true)
 	task_insert_at(manager, index_at, res)
 	return
@@ -925,10 +955,12 @@ task_box_format_to_lines :: proc(box: ^Task_Box, width: int) {
 
 // init panel with data
 mode_panel_init :: proc(
-	parent: ^Element, 
+	parent: ^Element,
 	flags: Element_Flags,
 	allocator := context.allocator,
-) -> (res: ^Mode_Panel) {
+) -> (
+	res: ^Mode_Panel,
+) {
 	res = element_init(Mode_Panel, parent, flags, mode_panel_message, allocator)
 	mode_panel_cameras_init(res)
 	return
@@ -936,7 +968,7 @@ mode_panel_init :: proc(
 
 mode_panel_cameras_init :: proc(mmpp: ^Mode_Panel) {
 	cam_init(&mmpp.cam[.List], 25, 50)
-	cam_init(&mmpp.cam[.Kanban], 25, 50)		
+	cam_init(&mmpp.cam[.Kanban], 25, 50)
 }
 
 mode_panel_draw_verticals :: proc(target: ^Render_Target) {
@@ -979,7 +1011,7 @@ mode_panel_draw_verticals :: proc(target: ^Render_Target) {
 task_set_children_info :: proc() {
 	unfolds: bool
 	manager := mode_panel_manager_begin()
-	
+
 	// force indentation == 0
 	if app_filter_not_empty() {
 		task := app_task_filter(0)
@@ -993,7 +1025,7 @@ task_set_children_info :: proc() {
 	for list_index, linear_index in app.pool.filter {
 		task := app_task_list(list_index)
 		task.filter_index = linear_index
-		
+
 		if !task.filter_folded {
 			clear(&task.filter_children)
 		}
@@ -1002,7 +1034,13 @@ task_set_children_info :: proc() {
 	}
 
 	// insert children, pop previously folded task and move selection automatically
-	folded_insert_from_to :: proc(manager: ^Undo_Manager, root: ^Task, from: int) -> (unfolded: bool) {
+	folded_insert_from_to :: proc(
+		manager: ^Undo_Manager,
+		root: ^Task,
+		from: int,
+	) -> (
+		unfolded: bool,
+	) {
 		for j := from; j < len(app.pool.filter); j += 1 {
 			child := app_task_filter(j)
 
@@ -1029,7 +1067,7 @@ task_set_children_info :: proc() {
 	}
 
 	previous: ^Task
-	for i in 0..<len(app.pool.filter) {
+	for i in 0 ..< len(app.pool.filter) {
 		task := app_task_filter(i)
 
 		if previous != nil && previous.indentation < task.indentation {
@@ -1048,7 +1086,7 @@ task_set_children_info :: proc() {
 // manager = nil will not push changes to undo
 task_check_parent_states :: proc(manager: ^Undo_Manager) {
 	// reset all counts
-	for i in 0..<len(app.pool.filter) {
+	for i in 0 ..< len(app.pool.filter) {
 		task := app_task_filter(i)
 
 		if !task.filter_folded && task_has_children(task) {
@@ -1067,8 +1105,9 @@ task_check_parent_states :: proc(manager: ^Undo_Manager) {
 		// when has children - set state based on counted result
 		if !task.filter_folded && task_has_children(task) {
 			if task.state_count[.Normal] == 0 {
-				goal: Task_State = task.state_count[.Done] >= task.state_count[.Canceled] ? .Done : .Canceled
-				
+				goal: Task_State =
+					task.state_count[.Done] >= task.state_count[.Canceled] ? .Done : .Canceled
+
 				// set parent
 				if task.state != goal {
 					if !undo_pushed {
@@ -1099,7 +1138,7 @@ task_check_parent_states :: proc(manager: ^Undo_Manager) {
 		if task.visible_parent != nil {
 			task.visible_parent.state_count[task.state] += 1
 		}
-	}	
+	}
 
 	if undo_pushed {
 		undo_group_end(manager)
@@ -1113,7 +1152,7 @@ find_same_indentation_backwards :: proc(visible_index: int, allow_lower: bool) -
 
 	for i := visible_index - 1; i >= 0; i -= 1 {
 		task := app_task_filter(i)
-		
+
 		if task.indentation == task_current.indentation {
 			res = i
 			return
@@ -1134,7 +1173,7 @@ find_same_indentation_forwards :: proc(visible_index: int, allow_lower: bool) ->
 
 	for i := visible_index + 1; i < len(app.pool.filter); i += 1 {
 		task := app_task_filter(i)
-		
+
 		if task.indentation == task_current.indentation {
 			res = i
 			return
@@ -1172,12 +1211,13 @@ task_scale_factoring :: proc(di: int) -> (factor: f32) {
 //////////////////////////////////////////////
 
 mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	panel := cast(^Mode_Panel) element
+	panel := cast(^Mode_Panel)element
 	cam := &panel.cam[panel.mode]
 
 	#partial switch msg {
-		case .Find_By_Point_Recursive: {
-			point := cast(^Find_By_Point) dp
+	case .Find_By_Point_Recursive:
+		{
+			point := cast(^Find_By_Point)dp
 
 			if image_display_has_content_now(app.custom_split.image_display) {
 				element_find_by_point_single(app.custom_split.image_display, point)
@@ -1196,8 +1236,9 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return find_by_point_found(point)
 		}
 
-		// NOTE custom layout based on mode
-		case .Layout: {
+	// NOTE custom layout based on mode
+	case .Layout:
+		{
 			bounds := element.bounds
 
 			cam_update_screenshake(cam, power_mode_running())
@@ -1220,7 +1261,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 
 			switch panel.mode {
-				case .List: {
+			case .List:
+				{
 					cut := bounds
 
 					for list_index in app.pool.filter {
@@ -1229,7 +1271,13 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 						pseudo_rect := cut
 						pseudo_rect.l += int(task.indentation) * tab_scaled
 						pseudo_rect.r = pseudo_rect.l + task_min_width
-						box_rect := task_layout(task, pseudo_rect, false, tab_scaled, margin_scaled)
+						box_rect := task_layout(
+							task,
+							pseudo_rect,
+							false,
+							tab_scaled,
+							margin_scaled,
+						)
 						task_box_format_to_lines(task.box, rect_width(box_rect))
 
 						h := element_message(&task.element, .Get_Height)
@@ -1242,28 +1290,30 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 					}
 				}
 
-				case .Kanban: {
+			case .Kanban:
+				{
 					cut := bounds
 
 					// cutoff a rect left
 					kanban_current: RectI
 					kanban_children_count: int
 					kanban_children_start: int
-					root: ^Task
+					//TODO: Declared but not used.
+					// root: ^Task
 
 					for list_index, linear_index in app.pool.filter {
 						task := app_task_list(list_index)
-						
+
 						if task.indentation == 0 {
 							// get max indentations till same line is found
 							max_indentations: int
 							kanban_children_start = linear_index
 							kanban_children_count = 1
 
-							for j in linear_index + 1..<len(app.pool.filter) {
+							for j in linear_index + 1 ..< len(app.pool.filter) {
 								other := app_task_filter(j)
 								max_indentations = max(max_indentations, other.indentation)
-								
+
 								if other.indentation == 0 {
 									break
 								} else {
@@ -1273,7 +1323,9 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 
 							kanban_width := kanban_width_scaled
 							// TODO check this
-							kanban_width += int(f32(max_indentations) * f32(visuals_tab()) * TASK_SCALE)
+							kanban_width += int(
+								f32(max_indentations) * f32(visuals_tab()) * TASK_SCALE,
+							)
 							kanban_current = rect_cut_left(&cut, kanban_width)
 							task.kanban_rect = kanban_current
 							cut.l += kanban_gap_scaled
@@ -1281,7 +1333,13 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 
 						// pseudo layout for correct witdth
 						pseudo_rect := kanban_current
-						box_rect := task_layout(task, pseudo_rect, false, tab_scaled, margin_scaled)
+						box_rect := task_layout(
+							task,
+							pseudo_rect,
+							false,
+							tab_scaled,
+							margin_scaled,
+						)
 						box_rect.l += int(f32(task.indentation) * f32(visuals_tab()) * TASK_SCALE)
 						task_box_format_to_lines(task.box, rect_width(box_rect))
 
@@ -1303,7 +1361,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				scaled_size := fcs_task(&task.element)
 				x := task.box.bounds.l
 				y := task.box.bounds.t
-				app.caret.rect = box_layout_caret(task.box, scaled_size, TASK_SCALE, x, y,)
+				app.caret.rect = box_layout_caret(task.box, scaled_size, TASK_SCALE, x, y)
 				power_mode_check_spawn()
 			}
 
@@ -1314,10 +1372,10 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 
 			// adjust cam based on task cam position diff
-			if task, ok := app.keep_task_cam.?; ok  {
+			if task, ok := app.keep_task_cam.?; ok {
 				diff_y := app.keep_task_cam_rect.t - task.element.bounds.t
 				diff_x := app.keep_task_cam_rect.l - task.element.bounds.l
-				
+
 				mx := diff_x
 				my := diff_y
 				// my := difft + (element.window.cursor_y - app.keep_task_cam_rect.t)
@@ -1333,8 +1391,9 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 		}
 
-		case .Paint_Recursive: {
-			target := element.window.target 
+	case .Paint_Recursive:
+		{
+			target := element.window.target
 
 			bounds := element.bounds
 			render_rect(target, bounds, theme.background[0], 0)
@@ -1352,7 +1411,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			bounds.r += int(camx)
 			bounds.t += int(camy)
 			bounds.b += int(camy)
-			
+
 			// {
 			// 	r1 := bounds
 			// 	r1.r = r1.l + LINE_WIDTH
@@ -1383,7 +1442,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			// word error highlight
 			if options_spell_checking() && app.task_head != -1 && app.task_head == app.task_tail {
 				render_push_clip(target, panel.clip)
-				task := app_task_head() 
+				task := app_task_head()
 				spell_check_render_missing_words(target, task)
 			}
 
@@ -1405,26 +1464,26 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			// drag visualizer line
 			if app.task_head != -1 && app.drag_running && app.drag_index_at != -1 {
 				render_push_clip(target, panel.clip)
-				
+
 				drag_task := app_task_filter(app.drag_index_at)
-				bounds := drag_task.element.bounds
+				_bounds := drag_task.element.bounds
 				margin := int(4 * TASK_SCALE)
-				bounds.t = bounds.b - margin
-				rect_lerp(&app.drag_rect_lerp, bounds, 0.5)
-				bounds = rect_ftoi(app.drag_rect_lerp)
+				_bounds.t = _bounds.b - margin
+				rect_lerp(&app.drag_rect_lerp, _bounds, 0.5)
+				_bounds = rect_ftoi(app.drag_rect_lerp)
 
 				// inner
 				{
-					b := bounds
+					b := _bounds
 					b.t += margin / 2
 					b.b += margin / 2
 					render_rect(target, b, theme.text_default, ROUNDNESS)
 				}
 
-				bounds.b += margin
-				bounds.l -= margin / 2
-				bounds.r += margin / 2
-				render_rect(target, bounds, color_alpha(theme.text_default, .5), ROUNDNESS)
+				_bounds.b += margin
+				_bounds.l -= margin / 2
+				_bounds.r += margin / 2
+				render_rect(target, _bounds, color_alpha(theme.text_default, .5), ROUNDNESS)
 			}
 
 			// render dragged tasks
@@ -1465,7 +1524,12 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				fcs_font(font_regular)
 				fcs_size(DEFAULT_FONT_SIZE * TASK_SCALE)
 				fcs_color(theme.text_default)
-				text := fmt.tprintf("wanted %dFPS    current: %.fFPS    %.5fms", visuals_fps(), fps, ms)
+				text := fmt.tprintf(
+					"wanted %dFPS    current: %.fFPS    %.5fms",
+					visuals_fps(),
+					fps,
+					ms,
+				)
 				render_string_rect(target, rect, text)
 			}
 
@@ -1483,13 +1547,15 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return 1
 		}
 
-		case .Middle_Down: {
+	case .Middle_Down:
+		{
 			cam.start_x = int(cam.offset_x)
 			cam.start_y = int(cam.offset_y)
 		}
 
-		case .Mouse_Drag: {
-			mouse := (cast(^Mouse_Coordinates) dp)^
+	case .Mouse_Drag:
+		{
+			mouse := (cast(^Mouse_Coordinates)dp)^
 
 			if element.window.pressed_button == MOUSE_MIDDLE {
 				diff_x := element.window.cursor_x - mouse.x
@@ -1505,9 +1571,10 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 		}
 
-		case .Right_Up: {
+	case .Right_Up:
+		{
 			app.drag_circle = false
-			
+
 			if app.task_head == -1 {
 				if task_dragging_end() {
 					return 1
@@ -1523,7 +1590,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return 1
 		}
 
-		case .Left_Up: {
+	case .Left_Up:
+		{
 			if element_hide(panel_search, true) {
 				return 1
 			}
@@ -1534,7 +1602,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 		}
 
-		case .Mouse_Scroll_Y: {
+	case .Mouse_Scroll_Y:
+		{
 			if element.window.ctrl {
 				factor := task_scale_factoring(di)
 
@@ -1542,7 +1611,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				my := element.window.cursor_y - element.bounds.t
 				// fmt.eprintln("XY", element.bounds.l, element.bounds.t)
 				// fmt.eprintln("MOUSE REL", my)
-				old := TASK_SCALE
+				//TODO: Declared but not used.
+				// old := TASK_SCALE
 				scaling_set(SCALE, TASK_SCALE * factor)
 				// fmt.eprintln("SCALE", old, "->", TASK_SCALE)
 				cam_inc_x(cam, f32(mx) / TASK_SCALE * (1 - factor))
@@ -1562,7 +1632,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return 1
 		}
 
-		case .Mouse_Scroll_X: {
+	case .Mouse_Scroll_X:
+		{
 			if element.window.ctrl {
 			} else {
 				cam_inc_x(cam, f32(di) * 25)
@@ -1573,14 +1644,16 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			return 1
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			for list_index in app.pool.filter {
 				task := app_task_list(list_index)
 				element_message(&task.element, .Update, di, dp)
 			}
 		}
 
-		case .Left_Down: {
+	case .Left_Down:
+		{
 			element_reset_focus(element.window)
 
 			// add task on double click
@@ -1588,7 +1661,9 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			if clicks == 1 && !element.window.ctrl && !element.window.shift {
 				if app_filter_not_empty() {
 					task := app_task_head()
-					diff_y := element.window.cursor_y - (task.element.bounds.t + rect_height_halfed(task.element.bounds))
+					diff_y :=
+						element.window.cursor_y -
+						(task.element.bounds.t + rect_height_halfed(task.element.bounds))
 					todool_insert_sibling(diff_y < 0 ? COMBO_SHIFT : COMBO_EMPTY)
 					cam_check(cam, .Bounds)
 					return 1
@@ -1596,7 +1671,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			}
 		}
 
-		case .Animate: {
+	case .Animate:
+		{
 			handled := false
 
 			// drag animation and camera panning
@@ -1612,9 +1688,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				top := task_bounds.t - panel.bounds.t
 				bottom := task_bounds.b - panel.bounds.t
 
-				if ydirection != 0 && 
-					(ydirection == 1 && top < cam.margin_y * 2) ||
-					(ydirection == -1 && bottom > panel.bounds.b - cam.margin_y * 4) { 
+				if ydirection != 0 && (ydirection == 1 && top < cam.margin_y * 2) ||
+				   (ydirection == -1 && bottom > panel.bounds.b - cam.margin_y * 4) {
 					cam_inc_y(cam, f32(ygoal) * 0.1 * f32(ydirection))
 					mode_panel_cam_freehand_on(cam)
 				}
@@ -1623,9 +1698,8 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				left := task_bounds.l - panel.bounds.l
 				right := task_bounds.r - panel.bounds.l
 
-				if xdirection != 0 && 
-					(xdirection == 1 && left < cam.margin_x * 2) ||
-					(xdirection == -1 && right > panel.bounds.r - cam.margin_x * 4) {
+				if xdirection != 0 && (xdirection == 1 && left < cam.margin_x * 2) ||
+				   (xdirection == -1 && right > panel.bounds.r - cam.margin_x * 4) {
 					mode_panel_cam_freehand_on(cam)
 					cam_inc_x(cam, f32(xgoal) * 0.1 * f32(xdirection))
 				}
@@ -1637,7 +1711,13 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			handled |= y_handled
 
 			// check y afterwards
-			goal_y, direction_y := cam_bounds_check_y(cam, panel.bounds, app.caret.rect.t, app.caret.rect.b)
+			//TODO: "goal_y" declared but not used.
+			_, direction_y := cam_bounds_check_y(
+				cam,
+				panel.bounds,
+				app.caret.rect.t,
+				app.caret.rect.b,
+			)
 
 			if cam.ay.direction != CAM_CENTER && direction_y == 0 {
 				cam.ay.animating = false
@@ -1648,7 +1728,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 
 			// check x afterwards
 			// NOTE just check this everytime due to inconsistency
-			mode_panel_cam_bounds_check_x(cam,app.caret.rect.l, app.caret.rect.r, true, true)
+			mode_panel_cam_bounds_check_x(cam, app.caret.rect.l, app.caret.rect.r, true, true)
 
 			// fmt.eprintln("animating!", handled, cam.offset_y, cam.offset_x)
 			return int(handled)
@@ -1659,12 +1739,13 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 }
 
 task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	box := cast(^Task_Box) element
-	task := cast(^Task) element.parent
+	box := cast(^Task_Box)element
+	task := cast(^Task)element.parent
 
 	#partial switch msg {
-		case .Box_Text_Color: {
-			color := cast(^Color) dp
+	case .Box_Text_Color:
+		{
+			color := cast(^Color)dp
 			color^ = theme_task_text(task.state)
 
 			if task.state_unit > 0 {
@@ -1676,9 +1757,11 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 			return 1
 		}
 
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
-			draw_search_results := (.Hide not_in panel_search.flags)
+			//TODO: Declared but not used.
+			// draw_search_results := (.Hide not_in panel_search.flags)
 
 			x := box.bounds.l
 			y := box.bounds.t
@@ -1696,23 +1779,18 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 					text_width := string_width(line_text)
 					real_y := f32(y) + f32(line_y) * scaled_size + offset
 
-					rect := RectI {
-						x,
-						x + text_width,
-						int(real_y),
-						int(real_y) + LINE_WIDTH,
-					}
-					
+					rect := RectI{x, x + text_width, int(real_y), int(real_y) + LINE_WIDTH}
+
 					render_rect(target, rect, theme.text_bad, 0)
 				}
 			}
 
- 			// paint selection before text
+			// paint selection before text
 			scaled_size := fcs_task(&task.element)
 			if app.task_head == app.task_tail && task.filter_index == app.task_head {
 				real_alpha := caret_state_real_alpha(&app.caret)
 				box_render_selection(target, box, x, y, theme.caret_selection, real_alpha)
-				
+
 				task_box_paint_default_selection(box, scaled_size, real_alpha)
 				// task_box_paint_default(box)
 			} else {
@@ -1722,13 +1800,15 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 			return 1
 		}
 
-		case .Left_Down: {
+	case .Left_Down:
+		{
 			task_or_box_left_down(task, di, true)
 			return 1
 		}
 
-		case .Mouse_Drag: {
-			mouse := (cast(^Mouse_Coordinates) dp)^
+	case .Mouse_Drag:
+		{
+			mouse := (cast(^Mouse_Coordinates)dp)^
 
 			if element.window.pressed_button == MOUSE_LEFT {
 				// drag select tasks
@@ -1738,7 +1818,11 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 					// find hovered task and set till
 					for index in app.pool.filter {
 						t := app_task_list(index)
-						if rect_contains(t.element.bounds, element.window.cursor_x, element.window.cursor_y) {
+						if rect_contains(
+							t.element.bounds,
+							element.window.cursor_x,
+							element.window.cursor_y,
+						) {
 							if app.task_head != t.filter_index {
 								repaint = true
 							}
@@ -1773,7 +1857,8 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 			return 0
 		}
 
-		case .Right_Up: {
+	case .Right_Up:
+		{
 			app.drag_circle = false
 
 			if task_dragging_end() {
@@ -1784,7 +1869,8 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 			return 1
 		}
 
-		case .Value_Changed: {
+	case .Value_Changed:
+		{
 			dirty_push(&app.um_task)
 		}
 	}
@@ -1800,7 +1886,7 @@ fcs_task_tags :: proc() -> int {
 	// text state
 	fcs_font(font_regular)
 	fcs_size(DEFAULT_FONT_SIZE * TASK_SCALE)
-	fcs_ahv()		
+	fcs_ahv()
 	return int(10 * TASK_SCALE)
 }
 
@@ -1816,38 +1902,41 @@ task_tags_layout :: proc(task: ^Task, rect: RectI) {
 	text_margin := fcs_task_tags()
 	gap := int(5 * TASK_SCALE)
 	res: RectI
-	cam := mode_panel_cam()
+	//TODO: Declared but not used.
+	// cam := mode_panel_cam()
 	halfed := int(DEFAULT_FONT_SIZE * TASK_SCALE * 0.5)
 	// task.tags_rect = {}
 
 	// layout tag structs and spawn particles when now ones exist
-	for i in 0..<u8(8) {
+	for i in 0 ..< u8(8) {
 		res = {}
 
 		if field & 1 == 1 {
 			text := ss_string(sb.tags.names[i])
-			
+
 			switch tag_mode {
-				case TAG_SHOW_TEXT_AND_COLOR: {
+			case TAG_SHOW_TEXT_AND_COLOR:
+				{
 					width := string_width(text)
 					res = rect_cut_left(&rect, width + text_margin)
 				}
 
-				case TAG_SHOW_COLOR: {
+			case TAG_SHOW_COLOR:
+				{
 					res = rect_cut_left(&rect, int(50 * TASK_SCALE))
 				}
 			}
 
 			rect.l += gap
-			
+
 			// spawn partciles in power mode when changed
 			if task.tags_rect[i] == {} {
 				x := res.l
 				y := res.t + halfed
 				power_mode_spawn_along_text(text, f32(x + text_margin / 2), f32(y), theme.tags[i])
 			}
-		} 
-		
+		}
+
 		task.tags_rect[i] = res
 		field >>= 1
 	}
@@ -1855,14 +1944,15 @@ task_tags_layout :: proc(task: ^Task, rect: RectI) {
 
 // manual layout call so we can predict the proper positioning
 task_layout :: proc(
-	task: ^Task, 
-	bounds: RectI, 
+	task: ^Task,
+	bounds: RectI,
 	move: bool,
 	tab_scaled: int,
 	margin_scaled: int,
 ) -> RectI {
-	offset_indentation := int(task.indentation_smooth * f32(tab_scaled))
-	
+	//TODO: Declared but not used.
+	// offset_indentation := int(task.indentation_smooth * f32(tab_scaled))
+
 	// manually offset the line rectangle in total while retaining parent clip
 	bounds := bounds
 	bounds.t += int(task.top_offset)
@@ -1890,7 +1980,14 @@ task_layout :: proc(
 				x, y := rect_center(rect)
 				cam := mode_panel_cam()
 				cam_screenshake_reset(cam)
-				power_mode_spawn_at(x, y, cam.offset_x, cam.offset_y, P_SPAWN_HIGH, theme.text_default)
+				power_mode_spawn_at(
+					x,
+					y,
+					cam.offset_x,
+					cam.offset_y,
+					P_SPAWN_HIGH,
+					theme.text_default,
+				)
 			}
 
 			element_move(task.button_bookmark, rect)
@@ -1911,7 +2008,8 @@ task_layout :: proc(
 
 		if move {
 			if task.image_display.bounds == {} {
-				x, y := rect_center(top)
+				//TODO: Declared but not used.
+				// x, y := rect_center(top)
 				power_mode_spawn_rect(top, 10, theme.text_default)
 			}
 
@@ -1929,7 +2027,7 @@ task_layout :: proc(
 		width := element_message(task.button_link, .Get_Width)
 		rect := rect_cut_bottom(&cut, height)
 		rect.r = rect.l + width
-		
+
 		if move {
 			element_move(task.button_link, rect)
 		}
@@ -1943,7 +2041,7 @@ task_layout :: proc(
 	tag_mode := options_tag_mode()
 	if tag_mode != TAG_SHOW_NONE && task.tags != 0x00 {
 		rect := rect_cut_bottom(&cut, tag_mode_size(tag_mode))
-		cut.b -= int(5 * TASK_SCALE)  // gap
+		cut.b -= int(5 * TASK_SCALE) // gap
 
 		if move {
 			task_tags_layout(task, rect)
@@ -1969,13 +2067,13 @@ task_layout :: proc(
 
 		if move {
 			element_move(task.time_date, rect)
-		}		
+		}
 	} else {
 		if task.time_date != nil {
 			task.time_date.bounds = {}
 		}
 	}
-	
+
 	task.box.font_options = task.element.font_options
 	if move {
 		task.box.rendered_glyphs = nil
@@ -1990,7 +2088,7 @@ tag_mode_size :: proc(tag_mode: int) -> (res: int) {
 		res = int(DEFAULT_FONT_SIZE * TASK_SCALE)
 	} else if tag_mode == TAG_SHOW_COLOR {
 		res = int(10 * TASK_SCALE)
-	} 
+	}
 
 	return
 }
@@ -2019,22 +2117,28 @@ task_or_box_left_down :: proc(task: ^Task, clicks: int, only_box: bool) {
 }
 
 task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	task := cast(^Task) element
+	task := cast(^Task)element
 	tag_mode := options_tag_mode()
 	draw_tags := tag_mode != TAG_SHOW_NONE && task.tags != 0x0
 
 	#partial switch msg {
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			return int(TASK_SCALE * 200)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			line_size := task_font_size(element) * len(task.box.wrapped_lines)
 			// line_size += int(f32(task.has_children ? DEFAULT_FONT_SIZE + TEXT_MARGIN_VERTICAL : 0) * TASK_SCALE)
 
 			line_size += draw_tags ? tag_mode_size(tag_mode) + int(5 * TASK_SCALE) : 0
-			line_size += image_display_has_content_soon(task.image_display) ? int(IMAGE_DISPLAY_HEIGHT * TASK_SCALE) : 0
-			line_size += task_link_is_valid(task) ? element_message(task.button_link, .Get_Height) : 0
+			line_size +=
+				image_display_has_content_soon(task.image_display) \
+				? int(IMAGE_DISPLAY_HEIGHT * TASK_SCALE) \
+				: 0
+			line_size +=
+				task_link_is_valid(task) ? element_message(task.button_link, .Get_Height) : 0
 			line_size += task_separator_is_valid(task) ? int(SEPARATOR_SIZE * TASK_SCALE) : 0
 			margin_scaled := int(f32(visuals_task_margin()) * TASK_SCALE * 2)
 			line_size += margin_scaled
@@ -2042,7 +2146,8 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			return int(line_size)
 		}
 
-		case .Layout: {
+	case .Layout:
+		{
 			if task.top_animation_start {
 				task.top_offset = f32(task.top_old - task.element.bounds.t)
 				task.top_animation_start = false
@@ -2053,7 +2158,8 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			task_layout(task, element.bounds, true, tab_scaled, margin_scaled)
 		}
 
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			rect := task.element.bounds
 
@@ -2067,24 +2173,27 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 				field := task.tags
 
 				// go through each existing tag, draw each one
-				for i in 0..<u8(8) {
+				for i in 0 ..< u8(8) {
 					if field & 1 == 1 {
 						tag := sb.tags.names[i]
 						tag_color := theme.tags[i]
 						r := task.tags_rect[i]
 
 						switch tag_mode {
-							case TAG_SHOW_TEXT_AND_COLOR: {
+						case TAG_SHOW_TEXT_AND_COLOR:
+							{
 								render_rect(target, r, tag_color, ROUNDNESS)
 								fcs_color(color_to_bw(tag_color))
 								render_string_rect(target, r, ss_string(tag))
 							}
 
-							case TAG_SHOW_COLOR: {
+						case TAG_SHOW_COLOR:
+							{
 								render_rect(target, r, tag_color, ROUNDNESS)
 							}
 
-							case: {
+						case:
+							{
 								unimplemented("shouldnt get here")
 							}
 						}
@@ -2102,20 +2211,22 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			return 1
 		}
 
-		case .Middle_Down: {
+	case .Middle_Down:
+		{
 			window_set_pressed(element.window, app.mmpp, MOUSE_MIDDLE)
 		}
 
-		case .Find_By_Point_Recursive: {
-			p := cast(^Find_By_Point) dp
+	case .Find_By_Point_Recursive:
+		{
+			p := cast(^Find_By_Point)dp
 			task.tag_hovered = -1
 
 			// find tags first
 			field := task.tags
-			for i in 0..<8 {
+			for i in 0 ..< 8 {
 				if field & 1 == 1 {
 					r := task.tags_rect[i]
-					
+
 					if rect_contains(r, p.x, p.y) {
 						p.res = &task.element
 						task.tag_hovered = i
@@ -2138,11 +2249,13 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			return handled
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(task.tag_hovered != -1 ? Cursor.Hand : Cursor.Arrow)
 		}
 
-		case .Left_Down: {
+	case .Left_Down:
+		{
 			if task.tag_hovered != -1 {
 				bit := u8(1 << u8(task.tag_hovered))
 				manager := mode_panel_manager_scoped()
@@ -2155,24 +2268,19 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			return 1
 		}
 
-		case .Animate: {
+	case .Animate:
+		{
 			handled := false
 
 			handled |= animate_to_state(
 				&task.indentation_animating,
-				&task.indentation_smooth, 
+				&task.indentation_smooth,
 				f32(task.indentation),
-				2, 
+				2,
 				0.01,
 			)
-			
-			handled |= animate_to_state(
-				&task.top_animating,
-				&task.top_offset, 
-				0, 
-				1, 
-				1,
-			)
+
+			handled |= animate_to_state(&task.top_animating, &task.top_offset, 0, 1, 1)
 
 			// progress animation on parent
 			if task_has_children(task) && progressbar_show() {
@@ -2202,13 +2310,15 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 			return int(handled)
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			for child in element.children {
 				element_message(child, msg, di, dp)
 			}
 		}
 
-		case .Destroy: {
+	case .Destroy:
+		{
 			delete(task.filter_children)
 		}
 	}
@@ -2239,10 +2349,11 @@ goto_init :: proc(window: ^Window) {
 	p.panel.shadow = true
 
 	p.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		floaty := cast(^Panel_Floaty) element
+		floaty := cast(^Panel_Floaty)element
 
 		#partial switch msg {
-			case .Animate: {
+		case .Animate:
+			{
 				handled := animate_to_state(
 					&app.goto_transition_animating,
 					&app.goto_transition_unit,
@@ -2258,7 +2369,8 @@ goto_init :: proc(window: ^Window) {
 				return int(handled)
 			}
 
-			case .Layout: {
+		case .Layout:
+			{
 				floaty.height = 0
 				for c in element.children {
 					floaty.height += element_message(c, .Get_Height)
@@ -2266,12 +2378,12 @@ goto_init :: proc(window: ^Window) {
 
 				w := int(f32(floaty.width) * SCALE)
 
-				floaty.x = 
-					app.mmpp.bounds.l + rect_width_halfed(app.mmpp.bounds) - w / 2
-				
+				floaty.x = app.mmpp.bounds.l + rect_width_halfed(app.mmpp.bounds) - w / 2
+
 				off := int(10 * SCALE)
-				floaty.y = 
-					(app.mmpp.bounds.t + off) + int(app.goto_transition_unit * -f32(floaty.height + off))
+				floaty.y =
+					(app.mmpp.bounds.t + off) +
+					int(app.goto_transition_unit * -f32(floaty.height + off))
 
 				// NOTE already taking scale into account from children
 				h := floaty.height
@@ -2280,30 +2392,33 @@ goto_init :: proc(window: ^Window) {
 				return 1
 			}
 
-			case .Key_Combination: {
-				combo := (cast(^string) dp)^
+		case .Key_Combination:
+			{
+				combo := (cast(^string)dp)^
 				handled := true
 
 				switch combo {
-					// case "escape": {
-					// 	goto_transition_unit = 0
-					// 	goto_transition_hide = true
-					// 	goto_transition_animating = true
-					// 	element_animation_start(floaty)
+				// case "escape": {
+				// 	goto_transition_unit = 0
+				// 	goto_transition_hide = true
+				// 	goto_transition_animating = true
+				// 	element_animation_start(floaty)
 
-					// 	// reset to origin 
-					// 	task_head = goto_saved_task_head
-					// 	app.task_tail = goto_saved_task_tail
-					// }
+				// 	// reset to origin 
+				// 	task_head = goto_saved_task_head
+				// 	app.task_tail = goto_saved_task_tail
+				// }
 
-					case "return": {
+				case "return":
+					{
 						app.goto_transition_unit = 0
 						app.goto_transition_hide = true
 						app.goto_transition_animating = true
 						element_animation_start(floaty)
 					}
 
-					case: {
+				case:
+					{
 						handled = false
 					}
 				}
@@ -2315,16 +2430,17 @@ goto_init :: proc(window: ^Window) {
 		return 0
 	}
 
-	label_init(p.panel, { .Label_Center, .HF }, "Goto Line")
-	spacer_init(p.panel, { .HF }, 0, 10)
-	box := text_box_init(p.panel, { .HF })
+	label_init(p.panel, {.Label_Center, .HF}, "Goto Line")
+	spacer_init(p.panel, {.HF}, 0, 10)
+	box := text_box_init(p.panel, {.HF})
 	box.codepoint_numbers_only = true
 	box.um = &app.um_goto
 	box.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		box := cast(^Text_Box) element
+		box := cast(^Text_Box)element
 
 		#partial switch msg {
-			case .Value_Changed: {
+		case .Value_Changed:
+			{
 				value := strconv.atoi(ss_string(&box.ss))
 				old_head := app.task_head
 				old_tail := app.task_tail
@@ -2336,9 +2452,9 @@ goto_init :: proc(window: ^Window) {
 				// 	app.task_tail = temp + value
 				// 	fmt.eprintln(task_head, task_tail)
 				// } else {
-					value -= 1
-					app.task_head = value
-					app.task_tail = value
+				value -= 1
+				app.task_head = value
+				app.task_tail = value
 				// }
 
 				if old_head != app.task_head && old_tail != app.task_tail {
@@ -2346,7 +2462,8 @@ goto_init :: proc(window: ^Window) {
 				}
 			}
 
-			case .Update: {
+		case .Update:
+			{
 				if di == UPDATE_FOCUS_LOST {
 					element_hide(app.panel_goto, true)
 					element_focus(element.window, nil)
@@ -2367,10 +2484,11 @@ custom_split_set_scrollbars :: proc(split: ^Custom_Split) {
 }
 
 custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	split := cast(^Custom_Split) element
+	split := cast(^Custom_Split)element
 
 	#partial switch msg {
-		case .Layout: {
+	case .Layout:
+		{
 			bounds := element.bounds
 			// log.info("BOUNDS", element.bounds, window_rect(window_main))
 
@@ -2397,7 +2515,7 @@ custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 			// scrollbar depends on result after mode panel layouting
 			{
 				task_bounds := task_total_bounds()
-		
+
 				scrollbar_layout_help(
 					split.hscrollbar,
 					split.vscrollbar,
@@ -2408,7 +2526,8 @@ custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 			}
 		}
 
-		case .Scrolled_X: {
+	case .Scrolled_X:
+		{
 			cam := &app.mmpp.cam[app.mmpp.mode]
 			if split.hscrollbar != nil {
 				cam.offset_x = math.round(-split.hscrollbar.position)
@@ -2416,41 +2535,52 @@ custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 			mode_panel_cam_freehand_on(cam)
 		}
 
-		case .Scrolled_Y: {
+	case .Scrolled_Y:
+		{
 			cam := &app.mmpp.cam[app.mmpp.mode]
 			if split.vscrollbar != nil {
 				cam.offset_y = math.round(-split.vscrollbar.position)
-			}	
+			}
 			mode_panel_cam_freehand_on(cam)
 		}
 	}
 
-	return 0  	
+	return 0
 }
 
 task_panel_init :: proc(split: ^Split_Pane) -> (element: ^Element) {
-	rect := split.window.rect
+	//TODO: Declared but not used.
+	// rect := split.window.rect
 
-	app.custom_split = element_init(Custom_Split, split, {}, custom_split_message, context.allocator)
-	app.custom_split.flags |= { .Sort_By_Z_Index }
+	app.custom_split = element_init(
+		Custom_Split,
+		split,
+		{},
+		custom_split_message,
+		context.allocator,
+	)
+	app.custom_split.flags |= {.Sort_By_Z_Index}
 
 	app.custom_split.vscrollbar = scrollbar_init(app.custom_split, {}, false, context.allocator)
-	app.custom_split.vscrollbar.force_visible = true	
+	app.custom_split.vscrollbar.force_visible = true
 	app.custom_split.hscrollbar = scrollbar_init(app.custom_split, {}, true, context.allocator)
-	app.custom_split.hscrollbar.force_visible = true	
+	app.custom_split.hscrollbar.force_visible = true
 
 	app.custom_split.image_display = image_display_init(app.custom_split, {}, nil)
 	app.custom_split.image_display.aspect = .Mix
-	app.custom_split.image_display.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		display := cast(^Image_Display) element
+	app.custom_split.image_display.message_user =
+	proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
+		display := cast(^Image_Display)element
 
 		#partial switch msg {
-			case .Clicked: {
+		case .Clicked:
+			{
 				display.img = nil
 				element_repaint(display)
 			}
 
-			case .Get_Cursor: {
+		case .Get_Cursor:
+			{
 				return int(Cursor.Hand)
 			}
 		}
@@ -2460,13 +2590,13 @@ task_panel_init :: proc(split: ^Split_Pane) -> (element: ^Element) {
 
 	app.mmpp = mode_panel_init(app.custom_split, {})
 	search_init(app.custom_split)
-	
+
 	return app.mmpp
 }
 
 tasks_load_file :: proc() {
 	err: Save_Error = nil
-	
+
 	if len(app.last_save_location.buf) != 0 {
 		file_path := strings.to_string(app.last_save_location)
 		file_data, ok := os.read_entire_file(file_path)
@@ -2478,14 +2608,14 @@ tasks_load_file :: proc() {
 		}
 
 		err = load_all(file_data)
-		
+
 		if err != nil {
 			log.info("LOAD: FAILED =", err, save_loc)
 		}
 	} else {
 		log.info("TODOOL: no default save path set")
 	}
-	
+
 	// on error reset and load default
 	if err != nil {
 		log.info("TODOOL: Loading failed -> Loading default")
@@ -2517,17 +2647,18 @@ tasks_load_tutorial :: proc() {
 	cam_check(cam, .Bounds)
 
 	// TODO add these to spell checker
-	@static load_indent := 0
+	@(static)
+	load_indent := 0
 
-	@(deferred_none=pop)
+	@(deferred_none = pop)
 	push_scoped_task :: #force_inline proc(text: string) {
 		spell_check_mapping_words_add(text)
 		task_push(max(load_indent, 0), text)
-		load_indent	+= 1
+		load_indent += 1
 	}
 
 	pop :: #force_inline proc() {
-	  load_indent -= 1
+		load_indent -= 1
 	}
 
 	t :: #force_inline proc(text: string) {
@@ -2546,7 +2677,9 @@ tasks_load_tutorial :: proc() {
 		t("up / down -> move to upper / lower task")
 		t("shift + movement -> shift select till the new destination")
 		t("ctrl+up / ctrl+down -> move to same upper/ lower task with the same indentation")
-		t("ctrl+m -> moves to the last task in scope, then shuffles between the start of the scope")
+		t(
+			"ctrl+m -> moves to the last task in scope, then shuffles between the start of the scope",
+		)
 		t("ctrl+, / ctrl+. -> moves to the previous / next task at indentation 0")
 		t("alt+up / alt+down -> shift the selected tasks up / down")
 		t("ctrl+home / ctrl+end -> move up/down a stack")
@@ -2599,7 +2732,9 @@ tasks_load_tutorial :: proc() {
 		t("ctrl+x -> cut the selected tasks - when no text is selected")
 		t("ctrl+shift+c -> copy the selected tasks to the clipboard with basic indentation")
 		t("ctrl+v -> paste the previously copied tasks relative to the current position")
-		t("ctrl+shift+v -> paste text from the clipboard based on newlines - text is left/right trimmed")
+		t(
+			"ctrl+shift+v -> paste text from the clipboard based on newlines - text is left/right trimmed",
+		)
 	}
 
 	{
@@ -2641,11 +2776,12 @@ tasks_load_tutorial :: proc() {
 }
 
 task_context_menu_spawn :: proc(task: ^Task) {
-	menu := menu_init(app.mmpp.window, { .Panel_Expand })
+	menu := menu_init(app.mmpp.window, {.Panel_Expand})
 	defer menu_show(menu)
 
-	task_multi_context := app.task_head != app.task_tail
-	
+	//TODO: Declared but not used.
+	// task_multi_context := app.task_head != app.task_tail
+
 	// select this task on single right click
 	if app.task_head == app.task_tail {
 		app.task_tail = task.filter_index
@@ -2682,13 +2818,15 @@ check_collision_point_circle :: proc(point, center: [2]f32, radius: f32) -> bool
 
 // Check collision between two circles
 check_collision_point_circles :: proc(
-	center1: [2]f32, 
-	radius1: f32, 
-	center2: [2]f32, 
+	center1: [2]f32,
+	radius1: f32,
+	center2: [2]f32,
 	radius2: f32,
-) -> (collision: bool) {
-	dx := center2.x - center1.x	// X distance between centers
-	dy := center2.y - center1.y	// Y distance between centers
+) -> (
+	collision: bool,
+) {
+	dx := center2.x - center1.x // X distance between centers
+	dy := center2.y - center1.y // Y distance between centers
 	distance := math.sqrt(dx * dx + dy * dy) // Distance between centers
 
 	if distance <= (radius1 + radius2) {
@@ -2703,8 +2841,8 @@ task_dragging_check_start :: proc(task: ^Task, mouse: Mouse_Coordinates) -> bool
 		return true
 	}
 
-	mouse: [2]f32 = { f32(mouse.x), f32(mouse.y) }
-	pos := [2]f32 { f32(task.element.window.cursor_x), f32(task.element.window.cursor_y) }
+	mouse: [2]f32 = {f32(mouse.x), f32(mouse.y)}
+	pos := [2]f32{f32(task.element.window.cursor_x), f32(task.element.window.cursor_y)}
 	circle_size := DRAG_CIRCLE * TASK_SCALE
 	if check_collision_point_circle(mouse, pos, circle_size) {
 		return false
@@ -2726,8 +2864,8 @@ task_dragging_check_start :: proc(task: ^Task, mouse: Mouse_Coordinates) -> bool
 
 	// push removal tasks to array before
 	iter := lh_iter_init()
-	for task in lh_iter_step(&iter) {
-		append(&app.drag_list, task)
+	for _task in lh_iter_step(&iter) {
+		append(&app.drag_list, _task)
 	}
 
 	task_head_tail_push(manager)
@@ -2770,7 +2908,7 @@ task_dragging_check_find :: proc(window: ^Window) {
 		app.drag_index_at = -1
 	} else {
 		list := app_focus_list()
-		
+
 		for index in list {
 			task := app_task_list(index)
 
@@ -2801,7 +2939,7 @@ task_dragging_end :: proc() -> bool {
 
 	// find lowest indentation 
 	lowest_indentation := max(int)
-	for i in 0..<len(app.drag_list) {
+	for i in 0 ..< len(app.drag_list) {
 		task := app.drag_list[i]
 		lowest_indentation = min(lowest_indentation, task.indentation)
 	}
@@ -2824,18 +2962,23 @@ task_dragging_end :: proc() -> bool {
 
 	manager := mode_panel_manager_scoped()
 	task_head_tail_push(manager)
-	app.task_state_progression = .Update_Animated	
-	
+	app.task_state_progression = .Update_Animated
+
 	// paste lines with indentation change saved
-	for i in 0..<len(app.drag_list) {
+	for i in 0 ..< len(app.drag_list) {
 		t := app.drag_list[i]
 		relative_indentation := drag_indentation + int(t.indentation) - lowest_indentation
-		
+
 		item := Undo_Item_Task_Indentation_Set {
 			task = t,
-			set = t.indentation,
-		}	
-		undo_push(manager, undo_task_indentation_set, &item, size_of(Undo_Item_Task_Indentation_Set))
+			set  = t.indentation,
+		}
+		undo_push(
+			manager,
+			undo_task_indentation_set,
+			&item,
+			size_of(Undo_Item_Task_Indentation_Set),
+		)
 
 		t.indentation = relative_indentation
 		t.indentation_smooth = f32(t.indentation)
@@ -2851,7 +2994,7 @@ task_dragging_end :: proc() -> bool {
 }
 
 mode_panel_context_menu_spawn :: proc() {
-	menu := menu_init(app.mmpp.window, { .Panel_Expand })
+	menu := menu_init(app.mmpp.window, {.Panel_Expand})
 	defer menu_show(menu)
 
 	p := menu.panel
@@ -2861,16 +3004,13 @@ mode_panel_context_menu_spawn :: proc() {
 	mbl(p, "Theme Editor", "theme_editor")
 	mbl(p, "Keymap Editor", "keymap_editor")
 	mbl(p, "Changelog Generator", "changelog")
-	mbc(p, "Load Tutorial", proc() { 
-		app_save_maybe(
-				app.window_main, 
-				proc() {
-					tasks_load_reset()
-					last_save_set("")
-				  tasks_load_tutorial()
-				}, 
-			)
-	 })
+	mbc(p, "Load Tutorial", proc() {
+		app_save_maybe(app.window_main, proc() {
+			tasks_load_reset()
+			last_save_set("")
+			tasks_load_tutorial()
+		})
+	})
 }
 
 // make sure cam is forced and skips trail
@@ -2921,7 +3061,7 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 
 	for index in list {
 		task := app_task_list(index)
-		
+
 		if hover_only && hovered != &task.element && hovered.parent != &task.element {
 			continue
 		}
@@ -2940,7 +3080,12 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 			for state, i in Task_State {
 				if task.progress_animation[state] != 0 {
 					roundness := ROUNDNESS + (i == 0 ? 1 : 0)
-					render_rect(target, prect, color_alpha(theme_task_text(state), alpha), roundness)
+					render_rect(
+						target,
+						prect,
+						color_alpha(theme_task_text(state), alpha),
+						roundness,
+					)
 				}
 
 				prect.l += int(task.progress_animation[state] * progress_size)
@@ -2950,7 +3095,7 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 			strings.builder_reset(&builder)
 			total := task_indentation_child_count(task, task.indentation)
 			non_normal := total - task.state_count[.Normal]
-			
+
 			if use_percentage {
 				fmt.sbprintf(&builder, "%.0f%%", f32(non_normal) / f32(total) * 100)
 			} else {
@@ -2967,7 +3112,7 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 todool_menu_bar :: proc(parent: ^Element) -> (split: ^Menu_Split, menu: ^Menu_Bar) {
 	split = menu_split_init(parent)
 	menu = menu_bar_init(split)
-	
+
 	quit :: proc() {
 		window_try_quit(app.window_main)
 	}
@@ -2977,15 +3122,9 @@ todool_menu_bar :: proc(parent: ^Element) -> (split: ^Menu_Split, menu: ^Menu_Ba
 	}
 
 	about :: proc() {
-		dialog_spawn(
-			app.window_main, 
-			proc(dialog: ^Dialog, res: string) {
+		dialog_spawn(app.window_main, proc(dialog: ^Dialog, res: string) {
 
-			}, 
-			200,
-			"Todool\n%l\n%s",
-			fmt.tprintf("Version: %s", VERSION),
-		)
+			}, 200, "Todool\n%l\n%s", fmt.tprintf("Version: %s", VERSION))
 	}
 
 	menu_bar_field_init(menu, "File", 1).invoke = proc(p: ^Panel) {
@@ -3091,14 +3230,14 @@ render_line_highlights :: proc(target: ^Render_Target, clip: RectI) {
 	if app.panel_goto != nil && (.Hide not_in app.panel_goto.flags) && !app.goto_transition_hide {
 		render = true
 	}
-	
+
 	// skip non rendering and forced on non alpha
 	if !render || alpha == 0 {
 		return
 	}
 
 	render_push_clip(target, clip)
-	
+
 	b := &app.builder_line_number
 	fcs_ahv(.RIGHT, .MIDDLE)
 	fcs_font(font_regular)
@@ -3112,7 +3251,7 @@ render_line_highlights :: proc(target: ^Render_Target, clip: RectI) {
 	line_offset := ODIN_DEBUG ? 1 : 0
 	line_offset += app.focus.root != nil ? app.focus.start : 0
 
-	for list_index, linear_index in list { 
+	for list_index, linear_index in list {
 		t := app_task_list(list_index)
 
 		// NOTE necessary as the modes could have the tasks at different positions
@@ -3140,7 +3279,8 @@ render_line_highlights :: proc(target: ^Render_Target, clip: RectI) {
 
 		strings.write_int(b, linear_index + line_offset)
 		text := strings.to_string(app.builder_line_number)
-		width := string_width(text) + TEXT_MARGIN_HORIZONTAL
+		//TODO: Declared but not used.
+		// width := string_width(text) + TEXT_MARGIN_HORIZONTAL
 		render_string_rect(target, r, text)
 	}
 }
@@ -3159,9 +3299,9 @@ render_zoom_highlight :: proc(target: ^Render_Target, clip: RectI) {
 	rect.b = rect.t + 100
 	zoom := fmt.tprintf("%.2f", TASK_SCALE)
 	render_drop_shadow(
-		target, 
-		rect_margin(rect, 20), 
-		color_alpha(theme_panel(.Front), alpha), 
+		target,
+		rect_margin(rect, 20),
+		color_alpha(theme_panel(.Front), alpha),
 		ROUNDNESS,
 	)
 	fcs_ahv()
@@ -3174,7 +3314,7 @@ render_zoom_highlight :: proc(target: ^Render_Target, clip: RectI) {
 // rendered glyphs system to store previously rendered glyphs 
 
 rendered_glyphs_clear :: proc() {
-	clear(&app.rendered_glyphs)	
+	clear(&app.rendered_glyphs)
 }
 
 rendered_glyph_start :: #force_inline proc() {
@@ -3186,38 +3326,25 @@ rendered_glyph_gather :: #force_inline proc(output: ^[]Rendered_Glyph) {
 }
 
 rendered_glyph_push :: proc(x, y: f32, codepoint: rune) -> ^Rendered_Glyph {
-	append(&app.rendered_glyphs, Rendered_Glyph { 
-		x = x, 
-		y = y, 
-		codepoint = codepoint,
-	})
+	append(&app.rendered_glyphs, Rendered_Glyph{x = x, y = y, codepoint = codepoint})
 	return &app.rendered_glyphs[len(app.rendered_glyphs) - 1]
 }
 
 // wrapped lines equivalent
 
 wrapped_lines_clear :: proc() {
-	clear(&app.wrapped_lines)	
+	clear(&app.wrapped_lines)
 }
 
-wrapped_lines_push :: proc(
-	text: string, 
-	width: f32,
-	output: ^[]string,
-) {
+wrapped_lines_push :: proc(text: string, width: f32, output: ^[]string) {
 	start := len(app.wrapped_lines)
-	wrap_format_to_lines(
-		&gs.fc,
-		text,
-		width,
-		&app.wrapped_lines,
-	)
+	wrap_format_to_lines(&gs.fc, text, width, &app.wrapped_lines)
 	output^ = app.wrapped_lines[start:len(app.wrapped_lines)]
 }
 
 wrapped_lines_push_forced :: proc(text: string, output: ^[]string) {
 	start := len(app.wrapped_lines)
-	append(&app.wrapped_lines, text)		
+	append(&app.wrapped_lines, text)
 	output^ = app.wrapped_lines[start:len(app.wrapped_lines)]
 }
 
@@ -3252,41 +3379,49 @@ open_folder :: proc(path: string) {
 	strings.write_byte(b, ' ')
 	strings.write_string(b, path)
 	strings.write_byte(b, '\x00')
-	libc.system(cstring(raw_data(b.buf)))		
+	libc.system(cstring(raw_data(b.buf)))
 }
 
-caret_state_update_motion :: proc(using state: ^Caret_State, allow_last: bool) -> bool {
-	return caret_animate() && 
-		caret_motion() && 
-		!motion_skip && 
-		(int(motion_last_x) != rect.l || int(motion_last_y) != rect.t || (allow_last && motion_last_frame))
+caret_state_update_motion :: proc(state: ^Caret_State, allow_last: bool) -> bool {
+	return(
+		caret_animate() &&
+		caret_motion() &&
+		!state.motion_skip &&
+		(int(state.motion_last_x) != state.rect.l ||
+				int(state.motion_last_y) != state.rect.t ||
+				(allow_last && state.motion_last_frame)) \
+	)
 }
 
-caret_state_update_alpha :: proc(using state: ^Caret_State) -> bool {
+caret_state_update_alpha :: proc(state: ^Caret_State) -> bool {
 	return caret_animate() && caret_alpha()
 }
 
 caret_state_real_alpha :: proc(state: ^Caret_State) -> f32 {
-	return caret_state_update_alpha(state) ? 1 - clamp(state.alpha * state.alpha * state.alpha, 0, 1) : 1
+	return(
+		caret_state_update_alpha(state) \
+		? 1 - clamp(state.alpha * state.alpha * state.alpha, 0, 1) \
+		: 1 \
+	)
 }
 
-caret_state_update_outline :: proc(using state: ^Caret_State) -> bool {
-	return caret_animate() && 
-		caret_motion() && 
-		!motion_skip && 
-		outline_goal != outline_current
+caret_state_update_outline :: proc(state: ^Caret_State) -> bool {
+	return(
+		caret_animate() &&
+		caret_motion() &&
+		!state.motion_skip &&
+		state.outline_goal != state.outline_current \
+	)
 }
 
 Motion_Rect_Iter :: struct {
-	x, y: f32,
-	width, height: f32,
-	
+	x, y:           f32,
+	width, height:  f32,
 	last_x, last_y: f32,
-	previous_x: f32,
-	
-	count: int,
-	index: int,
-	step_unit: f32,
+	previous_x:     f32,
+	count:          int,
+	index:          int,
+	step_unit:      f32,
 }
 
 motion_rect_init :: proc(rect: RectI, last_x, last_y: f32, count: int) -> (res: Motion_Rect_Iter) {
@@ -3309,7 +3444,7 @@ motion_rect_iter :: proc(iter: ^Motion_Rect_Iter) -> (res: RectF, step: f32, ok:
 		x := math.lerp(iter.x, iter.last_x, iter.step_unit)
 		y := math.lerp(iter.y, iter.last_y, iter.step_unit)
 		z := max(iter.width, math.ceil(math.abs(x - iter.previous_x)))
-		res = { x, x + z, y, y + iter.height }
+		res = {x, x + z, y, y + iter.height}
 		iter.previous_x = x
 		ok = true
 	}
@@ -3318,12 +3453,17 @@ motion_rect_iter :: proc(iter: ^Motion_Rect_Iter) -> (res: RectF, step: f32, ok:
 }
 
 // draw an animated caret rect
-caret_state_render :: proc(target: ^Render_Target, using state: ^Caret_State) {
+caret_state_render :: proc(target: ^Render_Target, state: ^Caret_State) {
 	real_alpha := caret_state_real_alpha(state)
-	motion_last_frame = false
+	state.motion_last_frame = false
 
 	if caret_state_update_motion(state, false) {
-		iter := motion_rect_init(rect, motion_last_x, motion_last_y, motion_count)
+		iter := motion_rect_init(
+			state.rect,
+			state.motion_last_x,
+			state.motion_last_y,
+			state.motion_count,
+		)
 
 		for rect, step in motion_rect_iter(&iter) {
 			r := rect_ftoi(rect)
@@ -3339,43 +3479,43 @@ caret_state_render :: proc(target: ^Render_Target, using state: ^Caret_State) {
 		// 	power_mode_spawn_at(motion_last_x, motion_last_y + vert_off, xoff, yoff, 1, color)
 		// }
 
-		motion_last_frame = true
+		state.motion_last_frame = true
 	} else {
-		motion_last_x = f32(rect.l)
-		motion_last_y = f32(rect.t)
+		state.motion_last_x = f32(state.rect.l)
+		state.motion_last_y = f32(state.rect.t)
 
 		color := color_alpha(theme.caret, real_alpha)
-		render_rect(target, rect, color, 0)
+		render_rect(target, state.rect, color, 0)
 	}
 
 	// skip trail rendering
-	if motion_skip {
-		motion_last_x = f32(rect.l)
-		motion_last_y = f32(rect.t)
-		motion_skip = false
+	if state.motion_skip {
+		state.motion_last_x = f32(state.rect.l)
+		state.motion_last_y = f32(state.rect.t)
+		state.motion_skip = false
 	} else {
-		animate_to(&motion_last_x, f32(rect.l), 4, 0.1)
-		animate_to(&motion_last_y, f32(rect.t), 4, 0.1)
+		animate_to(&state.motion_last_x, f32(state.rect.l), 4, 0.1)
+		animate_to(&state.motion_last_y, f32(state.rect.t), 4, 0.1)
 	}
 
 	caret_state_increase_alpha(state)
 }
 
-caret_state_increase_alpha :: proc(using state: ^Caret_State) {
+caret_state_increase_alpha :: proc(state: ^Caret_State) {
 	if caret_state_update_alpha(state) {
 		speed := visuals_animation_speed()
 
-		if alpha_forwards {
-			if alpha <= 1 {
-				alpha += gs.dt * speed
+		if state.alpha_forwards {
+			if state.alpha <= 1 {
+				state.alpha += gs.dt * speed
 			} else {
-				alpha_forwards = false
+				state.alpha_forwards = false
 			}
 		} else {
-			if alpha >= 0 {
-				alpha -= gs.dt * speed
+			if state.alpha >= 0 {
+				state.alpha -= gs.dt * speed
 			} else {
-				alpha_forwards = true
+				state.alpha_forwards = true
 			}
 		}
 	}
@@ -3401,7 +3541,7 @@ render_caret_and_outlines :: proc(target: ^Render_Target, clip: RectI) {
 
 		task_rect := task.element.bounds
 		app.caret.outline_current = rect_itof(task_rect)
-		
+
 		if skip {
 			app.caret.outline_goal = rect_itof(task_rect)
 		} else {
@@ -3424,7 +3564,7 @@ render_caret_and_outlines :: proc(target: ^Render_Target, clip: RectI) {
 		app.caret.motion_skip = true
 
 		// shadow first
-		for i in 0..<low {
+		for i in 0 ..< low {
 			task := app_task_filter(i)
 			render_rect(target, task.element.bounds, shadow_color)
 		}
@@ -3437,7 +3577,7 @@ render_caret_and_outlines :: proc(target: ^Render_Target, clip: RectI) {
 		caret_state_increase_alpha(&app.caret)
 
 		// outline selected region
-		for i in low..<high + 1 {
+		for i in low ..< high + 1 {
 			task := app_task_filter(i)
 			count += sign
 			value := count / range
@@ -3448,7 +3588,7 @@ render_caret_and_outlines :: proc(target: ^Render_Target, clip: RectI) {
 		}
 
 		// shadow last
-		for i in high + 1..<len(app.pool.filter) {
+		for i in high + 1 ..< len(app.pool.filter) {
 			task := app_task_filter(i)
 			render_rect(target, task.element.bounds, shadow_color)
 		}
@@ -3466,7 +3606,7 @@ app_focus_alpha_animate :: proc() -> int {
 
 app_focus_alpha_update :: proc() {
 	direction := app_focus_alpha_animate()
-	
+
 	if direction != 0 {
 		if visuals_use_animations() {
 			goal := f32(direction == 1 ? 1 : 0)
@@ -3501,7 +3641,7 @@ app_focus_list :: proc() -> (res: []int) {
 }
 
 // get start/end of the focus range
-app_focus_bounds :: proc(){
+app_focus_bounds :: proc() {
 	if app.focus.root != nil {
 		app.focus.start = app.focus.root.filter_index
 		app.focus.end = app.focus.root.filter_index + 1
@@ -3569,5 +3709,5 @@ app_shadow_update :: proc() {
 
 	if app_shadow_animate() {
 		animate_to(&app.task_shadow_alpha, 1, 1, 0.01)
-	}	
+	}
 }

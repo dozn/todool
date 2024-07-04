@@ -1,30 +1,24 @@
 package src
 
-import "core:log"
-import "core:fmt"
-import "core:time"
-import "core:mem"
-import "core:os"
-import "core:unicode"
-import "core:unicode/utf8"
-import "core:slice"
 import "core:strings"
-import "core:hash"
 import "core:text/match"
 
 pattern_load_content_simple :: proc(
-	manager: ^Undo_Manager, 
+	manager: ^Undo_Manager,
 	content: string,
 	pattern: string,
 	indentation: int,
 	index_at: ^int,
-) -> (found_any: bool) {
+) -> (
+	found_any: bool,
+) {
 	temp := content
 
 	for line in strings.split_lines_iterator(&temp) {
 		m := match.matcher_init(line, pattern)
-	
-		res, ok := match.matcher_match(&m)
+
+		//TODO: "res" removed due to being unused.
+		_, ok := match.matcher_match(&m)
 
 		if ok && m.captures_length > 1 {
 			word := match.matcher_capture(&m, 0)

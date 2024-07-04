@@ -1,37 +1,34 @@
 package src
 
-import "core:time"
 import "core:mem"
-import "core:fmt"
 import "core:strings"
-import sdl "vendor:sdl2"
 import "cutf8"
 
-Dialog_Callback :: proc(^Dialog, string)
+Dialog_Callback :: proc(_: ^Dialog, _: string)
 
 Dialog :: struct {
-	using element: Element,
-	width: f32,
-	shadow: f32,
-	um: Undo_Manager,
+	using element:  Element,
+	width:          f32,
+	shadow:         f32,
+	um:             Undo_Manager,
 
 	// resulting state
-	result: Dialog_Result,
+	result:         Dialog_Result,
 
 	// stored state
-	focus_start: ^Element,
-	
+	focus_start:    ^Element,
+
 	// callbacks
-	on_finish: Dialog_Callback,
+	on_finish:      Dialog_Callback,
 
 	// found elements
 	button_default: ^Button,
-	button_cancel: ^Button,
-	stealer: ^KE_Stealer,
-	text_box: ^Text_Box,
+	button_cancel:  ^Button,
+	stealer:        ^KE_Stealer,
+	text_box:       ^Text_Box,
 
 	// children
-	panel: ^Panel,
+	panel:          ^Panel,
 }
 
 Dialog_Result :: enum {
@@ -46,12 +43,14 @@ dialog_init :: proc(
 	width: f32,
 	format: string,
 	args: ..string,
-) -> (res: ^Dialog) {
+) -> (
+	res: ^Dialog,
+) {
 	window := parent.window
 
 	// disable other elements
 	for element in window.element.children {
-		element.flags += { Element_Flag.Disabled }
+		element.flags += {Element_Flag.Disabled}
 	}
 
 	res = element_init(Dialog, parent, {}, dialog_message, context.allocator)
@@ -72,7 +71,7 @@ dialog_init :: proc(
 	undo_manager_init(&res.um, mem.Kilobyte * 2)
 
 	// panel 
-	panel := panel_init(res, { .Tab_Movement_Allowed, .Panel_Default_Background }, 5, 5)
+	panel := panel_init(res, {.Tab_Movement_Allowed, .Panel_Default_Background}, 5, 5)
 	panel.background_index = 2
 	panel.shadow = true
 	panel.rounded = true
@@ -89,7 +88,9 @@ dialog_spawn :: proc(
 	width: f32,
 	format: string,
 	args: ..string,
-) -> (res: ^Dialog) {
+) -> (
+	res: ^Dialog,
+) {
 	dialog_close(window)
 	res = dialog_init(&window.element, on_finish, width, format, ..args)
 	window.dialog = res
@@ -97,10 +98,11 @@ dialog_spawn :: proc(
 }
 
 dialog_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	dialog := cast(^Dialog) element
+	dialog := cast(^Dialog)element
 
 	#partial switch msg {
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			target := element.window.target
 			render_push_clip(target, element.window.rect)
 			shadow := theme.shadow
@@ -109,40 +111,45 @@ dialog_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> 
 			render_push_clip(target, element.bounds)
 		}
 
-		case .Layout: {
-			w := element.window
+	case .Layout:
+		{
+			//TODO: Declared but not used.
+			// w := element.window
 			assert(len(element.children) != 0)
-			
-			panel := cast(^Panel) element.children[0]
+
+			panel := cast(^Panel)element.children[0]
 			width := int(dialog.width * SCALE)
 			height := element_message(panel, .Get_Height, 0)
 			cx := (element.bounds.l + element.bounds.r) / 2
 			cy := (element.bounds.t + element.bounds.b) / 2
 			bounds := RectI {
 				cx - (width + 1) / 2,
-				cx + width / 2, 
+				cx + width / 2,
 				cy - (height + 1) / 2,
 				cy + height / 2,
 			}
 			element_move(panel, bounds)
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			panel := element.children[0]
 			element_message(panel, .Update, di, dp)
 		}
 
-		case .Destroy: {
+	case .Destroy:
+		{
 			undo_manager_destroy(&dialog.um)
 		}
 
-		case .Key_Combination: {
-			combo := (cast(^string) dp)^
+	case .Key_Combination:
+		{
+			combo := (cast(^string)dp)^
 
 			if combo == "escape" && dialog.button_cancel != nil {
 				dialog_close(dialog.window, .Cancel)
 				return 1
-			} 
+			}
 
 			if combo == "return" && dialog.button_default != nil {
 				dialog_close(dialog.window, .Default)
@@ -155,14 +162,10 @@ dialog_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> 
 			}
 		}
 
-		case .Animate: {
+	case .Animate:
+		{
 			handled := dialog.shadow <= 1
-			animate_to(
-				&dialog.shadow,
-				1,
-				2,
-				0.01,
-			)
+			animate_to(&dialog.shadow, 1, 2, 0.01)
 			return int(handled)
 		}
 	}
@@ -181,7 +184,7 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 		i := i
 
 		if i == 0 || codepoint == '\n' {
-			row = panel_init(dialog.panel, { .Panel_Horizontal, .HF }, 0, 5)
+			row = panel_init(dialog.panel, {.Panel_Horizontal, .HF}, 0, 5)
 		}
 
 		if codepoint == ' ' || codepoint == '\n' {
@@ -193,10 +196,11 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 			codepoint, i, _ = cutf8.ds_iter(&ds, format)
 
 			switch codepoint {
-				case 'b', 'B', 'C': {
+			case 'b', 'B', 'C':
+				{
 					text := args[arg_index]
 					arg_index += 1
-					b := button_init(row, { .HF }, text)
+					b := button_init(row, {.HF}, text)
 					b.message_user = dialog_button_message
 
 					// default
@@ -215,20 +219,23 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 					}
 				}
 
-				case 'f': {
-					spacer_init(row, { .HF }, 0, int(10 * SCALE), .Empty)
+			case 'f':
+				{
+					spacer_init(row, {.HF}, 0, int(10 * SCALE), .Empty)
 				}
 
-				case 'l': {
-					spacer_init(row, { .HF }, 0, LINE_WIDTH, .Thin)
+			case 'l':
+				{
+					spacer_init(row, {.HF}, 0, LINE_WIDTH, .Thin)
 				}
 
-				// text box
-				case 't': {
+			// text box
+			case 't':
+				{
 					text := args[arg_index]
 					arg_index += 1
-					box := text_box_init(row, { .HF }, text)
-					
+					box := text_box_init(row, {.HF}, text)
+
 					// box.um = &dialog.um
 					element_message(box, .Value_Changed)
 					dialog.text_box = box
@@ -238,19 +245,21 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 					}
 				}
 
-				// text line
-				case 's': {
+			// text line
+			case 's':
+				{
 					text := args[arg_index]
 					arg_index += 1
-					label_init(row, { .HF }, text)
+					label_init(row, {.HF}, text)
 				}
 
-				// keyboard input stealer
-				case 'x': {
+			// keyboard input stealer
+			case 'x':
+				{
 					text := args[arg_index]
 					arg_index += 1
 
-					stealer := ke_stealer_init(row, { .HF }, text)
+					stealer := ke_stealer_init(row, {.HF}, text)
 					dialog.stealer = stealer
 
 					if focus_next == nil {
@@ -274,11 +283,11 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 			}
 
 			text := format[byte_start:byte_end - (end_early ? 1 : 0)]
-			label := label_init(row, { .Label_Center, .HF }, text)
+			label := label_init(row, {.Label_Center, .HF}, text)
 			label.font_options = &app.font_options_bold
 
 			if end_early {
-				row = panel_init(dialog.panel, { .Panel_Horizontal, .HF }, 0, 5)
+				row = panel_init(dialog.panel, {.Panel_Horizontal, .HF}, 0, 5)
 			}
 		}
 	}
@@ -304,7 +313,7 @@ dialog_close :: proc(window: ^Window, set: Maybe(Dialog_Result) = nil) -> bool {
 	// reset state
 	window.focused = window.dialog.focus_start
 	for element in window.element.children {
-		element.flags -= { Element_Flag.Disabled }
+		element.flags -= {Element_Flag.Disabled}
 	}
 
 	// reset state to default
@@ -331,11 +340,11 @@ dialog_close :: proc(window: ^Window, set: Maybe(Dialog_Result) = nil) -> bool {
 }
 
 dialog_button_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	button := cast(^Button) element
+	button := cast(^Button)element
 
 	if msg == .Clicked {
 		dialog := element.window.dialog
-		
+
 		if button == dialog.button_default {
 			dialog.result = .Default
 		}

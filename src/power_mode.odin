@@ -1,13 +1,11 @@
 package src
 
-import "core:intrinsics"
-import "core:fmt"
-import "core:strings"
-import "core:math/rand"
-import "core:math/noise"
+import "base:intrinsics"
 import "core:math/ease"
-import "vendor:fontstash"
+import "core:math/noise"
+import "core:math/rand"
 import "cutf8"
+import "vendor:fontstash"
 
 // NOTE noise return -1 to 1 range
 
@@ -21,12 +19,11 @@ P_SPAWN_HIGH :: 10
 P_SPAWN_LOW :: 4
 
 PM_State :: struct {
-	particles: [dynamic]PM_Particle,
-
-	spawn_next: bool,
+	particles:   [dynamic]PM_Particle,
+	spawn_next:  bool,
 
 	// coloring
-	color_seed: i64,
+	color_seed:  i64,
 	color_count: f64,
 
 	// caret color
@@ -35,43 +32,38 @@ PM_State :: struct {
 pm_state: PM_State
 
 PM_Particle :: struct {
-	lifetime: f32,
+	lifetime:       f32,
 	lifetime_count: f32,
-	delay: f32, // delay until drawn
-	x, y: f32,
-	xoff, yoff: f32, // camera offset at the spawn time
-	radius: f32,
-	color: Color,
-	seed: i64,
+	delay:          f32, // delay until drawn
+	x, y:           f32,
+	xoff, yoff:     f32, // camera offset at the spawn time
+	radius:         f32,
+	color:          Color,
+	seed:           i64,
 }
 
 power_mode_init :: proc() {
-	using pm_state
-	particles = make([dynamic]PM_Particle, 0, 256)
-	color_seed = intrinsics.read_cycle_counter()
+	pm_state.particles = make([dynamic]PM_Particle, 0, 256)
+	pm_state.color_seed = intrinsics.read_cycle_counter()
 }
 
 power_mode_destroy :: proc() {
-	using pm_state
-	delete(particles)
+	delete(pm_state.particles)
 }
 
 power_mode_clear :: proc() {
-	using pm_state
-	clear(&particles)
-	color_count = 0
+	clear(&pm_state.particles)
+	pm_state.color_count = 0
 }
 
 power_mode_check_spawn :: proc() {
-	using pm_state
-
 	if !pm_show() {
 		return
 	}
 
-	if spawn_next {
+	if pm_state.spawn_next {
 		power_mode_spawn_at_caret()
-		spawn_next = false
+		pm_state.spawn_next = false
 	}
 }
 
@@ -109,10 +101,19 @@ power_mode_spawn_along_task_text :: proc(task: ^Task, task_count: int) {
 		ds: cutf8.Decode_State
 		count: int
 
-		for codepoint, i in cutf8.ds_iter(&ds, text) {
-			glyph := task.box.rendered_glyphs[i] 
+		//TODO: Commented-out "codepoint".
+		for _, i in cutf8.ds_iter(&ds, text) {
+			glyph := task.box.rendered_glyphs[i]
 			delay := f32(count) * 0.002 + f32(task_count) * 0.02
-			power_mode_spawn_at(glyph.x, glyph.y, cam.offset_x, cam.offset_y, P_SPAWN_LOW / 2, color, delay)
+			power_mode_spawn_at(
+				glyph.x,
+				glyph.y,
+				cam.offset_x,
+				cam.offset_y,
+				P_SPAWN_LOW / 2,
+				color,
+				delay,
+			)
 			count += 1
 		}
 	}
@@ -132,15 +133,11 @@ power_mode_spawn_at_caret :: proc() {
 }
 
 // spawn particles through random points of a rectangle
-power_mode_spawn_rect :: proc(
-	rect: RectI,
-	count: int,
-	color: Color = {},
-) {
+power_mode_spawn_rect :: proc(rect: RectI, count: int, color: Color = {}) {
 	cam := mode_panel_cam()
 	cam_screenshake_reset(cam)
-	
-	for i in 0..<count {
+
+	for i in 0 ..< count {
 		x := rand.float32() * rect_widthf(rect) + f32(rect.l)
 		y := rand.float32() * rect_heightf(rect) + f32(rect.t)
 		delay := f32(i) * 0.001
@@ -150,14 +147,12 @@ power_mode_spawn_rect :: proc(
 
 // spawn the wanted count of particles with the properties
 power_mode_spawn_at :: proc(
-	x, y: f32, 
-	xoff, yoff: f32, 
+	x, y: f32,
+	xoff, yoff: f32,
 	count: int,
-	color := Color {},
+	color := Color{},
 	delay: f32 = 0,
 ) {
-	using pm_state
-
 	width := 20 * TASK_SCALE
 	height := DEFAULT_FONT_SIZE * TASK_SCALE * 2
 	size := 3 * TASK_SCALE
@@ -165,7 +160,7 @@ power_mode_spawn_at :: proc(
 	// NOTE could resize upfront?
 	lifetime_opt := pm_particle_lifetime()
 
-	for i in 0..<count {
+	for _ in 0 ..< count {
 		life := rand.float32() * lifetime_opt + 0.5 // min is 0.5
 
 		// custom delay
@@ -175,42 +170,43 @@ power_mode_spawn_at :: proc(
 		}
 
 		// custom color
-		c := color 
+		c := color
 		if c == {} {
 			// normalize to 0 -> 1
-			value := (noise.noise_2d(color_seed, { color_count * 0.01, 0 }) + 1) / 2
+			value :=
+				(noise.noise_2d(pm_state.color_seed, {pm_state.color_count * 0.01, 0}) + 1) / 2
 			c = color_hsv_to_rgb(value, 1, 1)
 		}
 
-		append(&particles, PM_Particle {
-			lifetime = life,
-			lifetime_count = life,
-			delay = d,
+		append(
+			&pm_state.particles,
+			PM_Particle {
+				lifetime       = life,
+				lifetime_count = life,
+				delay          = d,
+				x              = x + rand.float32() * width - width / 2,
+				y              = y + rand.float32() * height - height / 2,
+				radius         = 2 + rand.float32() * size,
+				color          = c,
+				xoff           = -xoff,
+				yoff           = -yoff,
 
-			x = x + rand.float32() * width - width / 2,
-			y = y + rand.float32() * height - height / 2,
-			radius = 2 + rand.float32() * size,
-			color = c,
-			xoff = -xoff,
-			yoff = -yoff,
+				// random seed
+				seed           = intrinsics.read_cycle_counter(),
+			},
+		)
 
-			// random seed
-			seed = intrinsics.read_cycle_counter(),
-		})
-
-		color_count += 1
+		pm_state.color_count += 1
 	}
 }
 
 power_mode_update :: proc() {
-	using pm_state
-
 	if !pm_show() {
 		return
 	}
-	
-	for i := len(particles) - 1; i >= 0; i -= 1 {
-		p := &particles[i]
+
+	for i := len(pm_state.particles) - 1; i >= 0; i -= 1 {
+		p := &pm_state.particles[i]
 
 		if p.delay > 0 {
 			p.delay -= gs.dt
@@ -219,29 +215,27 @@ power_mode_update :: proc() {
 
 		if p.lifetime_count > 0 {
 			p.lifetime_count -= gs.dt
-			x_dir := noise.noise_2d(p.seed, { f64(p.lifetime_count) / 2, 0 })
-			y_dir := noise.noise_2d(p.seed, { f64(p.lifetime_count) / 2, 1 })
+			x_dir := noise.noise_2d(p.seed, {f64(p.lifetime_count) / 2, 0})
+			y_dir := noise.noise_2d(p.seed, {f64(p.lifetime_count) / 2, 1})
 			p.x += x_dir * TASK_SCALE * TASK_SCALE
 			p.y += y_dir * TASK_SCALE * TASK_SCALE
 		} else {
-			unordered_remove(&particles, i)
+			unordered_remove(&pm_state.particles, i)
 		}
 	}
 }
 
 power_mode_render :: proc(target: ^Render_Target) {
-	using pm_state
-
 	if !pm_show() {
 		return
 	}
-	
+
 	cam := mode_panel_cam()
 	xoff, yoff: f32
 	alpha_opt := pm_particle_alpha_scale()
 
-	for i := len(particles) - 1; i >= 0; i -= 1 {
-		p := &particles[i]
+	for i := len(pm_state.particles) - 1; i >= 0; i -= 1 {
+		p := &pm_state.particles[i]
 
 		if p.delay > 0 {
 			continue
@@ -251,7 +245,7 @@ power_mode_render :: proc(target: ^Render_Target) {
 
 		// when alpha has reached 0 we can shortcut here
 		if alpha == 0 {
-			unordered_remove(&particles, i)
+			unordered_remove(&pm_state.particles, i)
 			continue
 		}
 
@@ -264,17 +258,15 @@ power_mode_render :: proc(target: ^Render_Target) {
 }
 
 power_mode_running :: #force_inline proc() -> bool {
-	return len(pm_state.particles) != 0 
+	return len(pm_state.particles) != 0
 }
 
 power_mode_issue_spawn :: #force_inline proc() {
-	using pm_state
-
 	if !pm_show() {
 		return
 	}
 
-	spawn_next = true
+	pm_state.spawn_next = true
 
 	cam := mode_panel_cam()
 	cam_screenshake_reset(cam)
@@ -285,11 +277,9 @@ cam_screenshake_reset :: #force_inline proc(cam: ^Pan_Camera) {
 }
 
 power_mode_set_caret_color :: proc() {
-  using pm_state
-
-  if app.task_head != -1 {
-  	task := app_task_head()
-  	// TODO make this syntax based instead
-  	caret_color = theme_task_text(task.state)
-  }	
+	if app.task_head != -1 {
+		task := app_task_head()
+		// TODO make this syntax based instead
+		pm_state.caret_color = theme_task_text(task.state)
+	}
 }

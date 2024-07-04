@@ -1,14 +1,11 @@
 package src
 
-import "core:fmt"
-import "core:math"
-import "core:unicode"
-import "core:unicode/utf8"
-import "core:mem"
+import "base:intrinsics"
 import "core:log"
+import "core:mem"
 import "core:strings"
-import "core:intrinsics"
 import "core:time"
+import "core:unicode"
 import "cutf8"
 import "vendor:fontstash"
 
@@ -32,42 +29,42 @@ BOX_END :: 2
 BOX_SELECT_ALL :: 3
 
 Box :: struct {
-	ss: Small_String, // actual data
-	head, tail: int,
-	
+	ss:                     Small_String, // actual data
+	head, tail:             int,
+
 	// word selection state
 	word_selection_started: bool,
-	word_start: int,
-	word_end: int,
+	word_start:             int,
+	word_end:               int,
 
 	// line selection state
 	line_selection_started: bool,
-	line_selection_start: int,
-	line_selection_end: int,
+	line_selection_start:   int,
+	line_selection_end:     int,
 	line_selection_start_y: int,
 
 	// when the latest change happened
-	change_start: time.Tick,
-	last_was_space: bool,
+	change_start:           time.Tick,
+	last_was_space:         bool,
 
 	// rendered glyph start & end
-	rendered_glyphs: []Rendered_Glyph,
+	rendered_glyphs:        []Rendered_Glyph,
 	// wrappped lines start / end
-	wrapped_lines: []string,
+	wrapped_lines:          []string,
 }
 
 Text_Box :: struct {
-	using element: Element,
-	using box: Box,
-	scroll: f32,
+	using element:          Element,
+	using box:              Box,
+	scroll:                 f32,
 	codepoint_numbers_only: bool,
-	um: ^Undo_Manager,
+	um:                     ^Undo_Manager,
 }
 
 Task_Box :: struct {
 	using element: Element,
-	using box: Box,
-	text_color: Color,
+	using box:     Box,
+	text_color:    Color,
 }
 
 //////////////////////////////////////////////
@@ -75,26 +72,30 @@ Task_Box :: struct {
 //////////////////////////////////////////////
 
 text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	box := cast(^Text_Box) element
+	box := cast(^Text_Box)element
 
 	#partial switch msg {
-		case .Layout: {
+	case .Layout:
+		{
 			wrapped_lines_push_forced(ss_string(&box.ss), &box.wrapped_lines)
 		}
 
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.IBeam)
 		}
 
-		case .Box_Text_Color: {
-			color := cast(^Color) dp
+	case .Box_Text_Color:
+		{
+			color := cast(^Color)dp
 			focused := element.window.focused == element
 			hovered := element.window.hovered == element
 			pressed := element.window.pressed == element
 			color^ = hovered || pressed || focused ? theme.text_default : theme.text_blank
 		}
 
-		case .Paint_Recursive: {
+	case .Paint_Recursive:
+		{
 			focused := element.window.focused == element
 
 			target := element.window.target
@@ -151,15 +152,16 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			if focused && box.head != box.tail {
 				// recolor selected glyphs
 				ds: cutf8.Decode_State
-				text := ss_string(&box.ss)
+				_text := ss_string(&box.ss)
 				low, high := box_low_and_high(box)
 				back_color := theme_panel(.Front)
 
-				for codepoint, i in cutf8.ds_iter(&ds, text) {
+				//TODO: Commented-out "codepoint".
+				for _, i in cutf8.ds_iter(&ds, _text) {
 					if (low <= i && i < high) {
 						glyph := box.rendered_glyphs[i]
-						
-						for v in &glyph.vertices {
+
+						for &v in &glyph.vertices {
 							v.color = back_color
 						}
 					}
@@ -171,20 +173,16 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 
 				x := text_bounds.l
 				y := text_bounds.t + rect_height_halfed(text_bounds) - scaled_size / 2
-				caret := rect_wh(
-					x + caret_x,
-					y,
-					int(2 * SCALE),
-					scaled_size,
-				)
+				caret := rect_wh(x + caret_x, y, int(2 * SCALE), scaled_size)
 				render_rect(target, caret, theme.caret, 0)
 			}
 		}
 
-		case .Key_Combination: {
-			combo := (cast(^string) dp)^
+	case .Key_Combination:
+		{
+			combo := (cast(^string)dp)^
 			assert(box.um != nil)
-			kbox = { box, box.um, element, false, false }
+			kbox = {box, box.um, element, false, false}
 			handled := false
 
 			if keymap_combo_execute(&box.window.keymap_box, combo) {
@@ -198,21 +196,23 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			return int(handled)
 		}
 
-		case .Update: {
+	case .Update:
+		{
 			if di == UPDATE_FOCUS_GAINED {
 				box_move_end_simple(box)
 			}
 
-			element_repaint(element)	
+			element_repaint(element)
 		}
 
-		case .Unicode_Insertion: {
-			codepoint := (cast(^rune) dp)^
+	case .Unicode_Insertion:
+		{
+			codepoint := (cast(^rune)dp)^
 
 			// skip non numbers or -
 			if box.codepoint_numbers_only && !(codepoint == '-' || unicode.is_number(codepoint)) {
 				return 1
-			} 
+			}
 
 			assert(box.um != nil)
 			if box_insert(box.um, element, box, codepoint, false) {
@@ -223,11 +223,13 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			return 0
 		}
 
-		case .Box_Set_Caret: {
+	case .Box_Set_Caret:
+		{
 			box_set_caret_dp(box, di, dp)
 		}
 
-		case .Left_Down: {
+	case .Left_Down:
+		{
 			element_focus(element.window, element)
 
 			old_tail := box.tail
@@ -242,7 +244,8 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			return 1
 		}
 
-		case .Mouse_Drag: {
+	case .Mouse_Drag:
+		{
 			if element.window.pressed_button == MOUSE_LEFT {
 				scaled_size := efont_size(element)
 				fcs_ahv(.LEFT, .TOP)
@@ -251,11 +254,13 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			}
 		}
 
-		case .Get_Width: {
+	case .Get_Width:
+		{
 			return int(SCALE * 100)
 		}
 
-		case .Get_Height: {
+	case .Get_Height:
+		{
 			return efont_size(element) + int(TEXT_MARGIN_VERTICAL * SCALE)
 		}
 	}
@@ -264,18 +269,20 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 }
 
 text_box_init :: proc(
-	parent: ^Element, 
-	flags: Element_Flags, 
+	parent: ^Element,
+	flags: Element_Flags,
 	text := "",
 	index_at := -1,
 	allocator := context.allocator,
-) -> (res: ^Text_Box) {
+) -> (
+	res: ^Text_Box,
+) {
 	flags := flags
-	flags |= { .Tab_Stop }
+	flags |= {.Tab_Stop}
 	res = element_init(Text_Box, parent, flags, text_box_message, allocator, index_at)
 	ss_set_string(&res.box.ss, text)
 	box_move_end_simple(&res.box)
-	return	
+	return
 }
 
 //////////////////////////////////////////////
@@ -284,7 +291,8 @@ text_box_init :: proc(
 
 // just paints the text based on text color
 task_box_paint_default_selection :: proc(box: ^Task_Box, scaled_size: int, blend: f32) {
-	focused := box.window.focused == box
+	//TODO: Declared but not used.
+	// focused := box.window.focused == box
 	target := box.window.target
 
 	color: Color
@@ -303,14 +311,19 @@ task_box_paint_default_selection :: proc(box: ^Task_Box, scaled_size: int, blend
 	// draw each wrapped line
 	y_offset: int
 	rendered_glyph_start()
-	for wrap_line, i in box.wrapped_lines {
-		iter := fontstash.TextIterInit(&gs.fc, f32(box.bounds.l), f32(box.bounds.t + y_offset), wrap_line)
+	for wrap_line in box.wrapped_lines {
+		iter := fontstash.TextIterInit(
+			&gs.fc,
+			f32(box.bounds.l),
+			f32(box.bounds.t + y_offset),
+			wrap_line,
+		)
 
 		for fontstash.TextIterNext(&gs.fc, &iter, &q) {
 			rglyph := rendered_glyph_push(iter.x, iter.y, iter.codepoint)
 			state.color = low <= codepoint_index && codepoint_index < high ? back_color : color
 			render_glyph_quad_store(target, group, state, &q, rglyph)
-			codepoint_index += 1 
+			codepoint_index += 1
 		}
 
 		y_offset += scaled_size
@@ -322,7 +335,8 @@ task_box_paint_default_selection :: proc(box: ^Task_Box, scaled_size: int, blend
 
 // just paints the text based on text color
 task_box_paint_default :: proc(box: ^Task_Box, scaled_size: int) {
-	focused := box.window.focused == box
+	//TODO: Declared but not used.
+	// focused := box.window.focused == box
 	target := box.window.target
 
 	color: Color
@@ -334,7 +348,7 @@ task_box_paint_default :: proc(box: ^Task_Box, scaled_size: int) {
 	// draw each wrapped line
 	rendered_glyph_start()
 	y: int
-	for wrap_line, i in box.wrapped_lines {
+	for wrap_line in box.wrapped_lines {
 		render_string_store(target, box.bounds.l, box.bounds.t + y, wrap_line)
 		y += scaled_size
 	}
@@ -344,22 +358,25 @@ task_box_paint_default :: proc(box: ^Task_Box, scaled_size: int) {
 // test sosososo test
 
 task_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	task_box := cast(^Task_Box) element
+	task_box := cast(^Task_Box)element
 
 	#partial switch msg {
-		case .Get_Cursor: {
+	case .Get_Cursor:
+		{
 			return int(Cursor.IBeam)
 		}
 
-		case .Box_Text_Color: {
-			color := cast(^Color) dp
+	case .Box_Text_Color:
+		{
+			color := cast(^Color)dp
 			color^ = theme_task_text(.Normal)
 		}
 
-		case .Key_Combination: {
-			combo := (cast(^string) dp)^
+	case .Key_Combination:
+		{
+			combo := (cast(^string)dp)^
 			handled := false
-			kbox = { task_box, &app.um_task, element, true, false }
+			kbox = {task_box, &app.um_task, element, true, false}
 
 			if keymap_combo_execute(&task_box.window.keymap_box, combo) {
 				handled = !kbox.failed
@@ -372,12 +389,14 @@ task_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			return int(handled)
 		}
 
-		case .Update: {
-			element_repaint(element)	
+	case .Update:
+		{
+			element_repaint(element)
 		}
 
-		case .Unicode_Insertion: {
-			codepoint := (cast(^rune) dp)^
+	case .Unicode_Insertion:
+		{
+			codepoint := (cast(^rune)dp)^
 
 			if box_insert(&app.um_task, element, task_box, codepoint, true) {
 				power_mode_issue_spawn()
@@ -388,7 +407,8 @@ task_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			return 0
 		}
 
-		case .Box_Set_Caret: {
+	case .Box_Set_Caret:
+		{
 			box_set_caret_dp(task_box, di, dp)
 		}
 	}
@@ -397,12 +417,14 @@ task_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 }
 
 task_box_init :: proc(
-	parent: ^Element, 
-	flags: Element_Flags, 
-	text := "", 
+	parent: ^Element,
+	flags: Element_Flags,
+	text := "",
 	allocator := context.allocator,
 	index_at := -1,
-) -> (res: ^Task_Box) {
+) -> (
+	res: ^Task_Box,
+) {
 	res = element_init(Task_Box, parent, flags, task_box_message, allocator, index_at)
 	// box_init(&res.box)
 	ss_set_string(&res.box.ss, text)
@@ -423,7 +445,7 @@ box_copy_selection :: proc(window: ^Window, box: ^Box) -> (found: bool) {
 	ds: cutf8.Decode_State
 	low, high := box_low_and_high(box)
 	selection, ok := cutf8.ds_string_selection(&ds, ss_string(&box.ss), low, high)
-	
+
 	if ok {
 		clipboard_set_with_builder(selection)
 		found = true
@@ -434,10 +456,12 @@ box_copy_selection :: proc(window: ^Window, box: ^Box) -> (found: bool) {
 
 box_paste :: proc(
 	manager: ^Undo_Manager,
-	element: ^Element, 
+	element: ^Element,
 	box: ^Box,
 	msg_by_task: bool,
-) -> (found: bool) {
+) -> (
+	found: bool,
+) {
 	if clipboard_has_content() {
 		text := clipboard_get_with_builder_till_newline()
 
@@ -446,7 +470,7 @@ box_paste :: proc(
 			if strings.has_suffix(text, ".png") {
 				task := app_task_head()
 				handle := image_load_push(text)
-				
+
 				if handle != nil {
 					task_set_img(task, handle)
 					found = true
@@ -489,7 +513,7 @@ box_check_changes :: proc(manager: ^Undo_Manager, box: ^Box) {
 		if diff > BOX_CHANGE_TIMEOUT {
 			undo_group_end(manager)
 		}
-	} 
+	}
 
 	box.change_start = time.tick_now()
 }
@@ -498,14 +522,14 @@ box_check_changes :: proc(manager: ^Undo_Manager, box: ^Box) {
 box_insert :: proc(
 	manager: ^Undo_Manager,
 	element: ^Element,
-	box: ^Box, 
+	box: ^Box,
 	codepoint: rune,
 	msg_by_task: bool,
 ) -> bool {
 	if box.head != box.tail {
 		box_replace(manager, element, box, "", 0, true, msg_by_task)
 	}
-	
+
 	if ss_full(&box.ss) {
 		return false
 	}
@@ -535,15 +559,15 @@ box_insert :: proc(
 	// push at end
 	if box.head == count {
 		item := Undo_Item_Box_Rune_Append {
-			box = box,
+			box       = box,
 			codepoint = codepoint,
 		}
 		undo_box_rune_append(manager, &item)
 	} else {
 		item := Undo_Item_Box_Rune_Insert_At {
-			box = box,
+			box       = box,
 			codepoint = codepoint,
-			index = box.head,
+			index     = box.head,
 		}
 		undo_box_rune_insert_at(manager, &item)
 	}
@@ -556,14 +580,14 @@ box_insert :: proc(
 box_replace :: proc(
 	manager: ^Undo_Manager,
 	element: ^Element,
-	box: ^Box, 
-	text: string, 
-	forced_selection: int, 
+	box: ^Box,
+	text: string,
+	forced_selection: int,
 	send_changed_message: bool,
 	msg_by_task: bool,
 ) {
 	box_check_changes(manager, box)
-	
+
 	if msg_by_task {
 		task_head_tail_push(manager)
 	}
@@ -574,27 +598,19 @@ box_replace :: proc(
 
 		// on single removal just do remove at
 		if high - low == 1 {
-			item := Undo_Item_Box_Rune_Remove_At { 
-				box,
-				low,
-			}
+			item := Undo_Item_Box_Rune_Remove_At{box, low}
 
 			undo_box_rune_remove_at(manager, &item)
 			// log.info("remove selection ONE")
 		} else {
-			item := Undo_Item_Box_Remove_Selection { 
-				box,
-				box.head,
-				box.tail,
-				forced_selection,
-			}
+			item := Undo_Item_Box_Remove_Selection{box, box.head, box.tail, forced_selection}
 			undo_box_remove_selection(manager, &item)
 		}
-	
+
 		if send_changed_message {
 			element_message(element, .Value_Changed)
 		}
-	} 
+	}
 
 	if len(text) != 0 && !ss_full(&box.ss) {
 		ds: cutf8.Decode_State
@@ -612,13 +628,13 @@ box_replace :: proc(
 		box.head += insert_count
 		box.tail = box.head
 
-		item := Undo_Item_Box_Remove_Selection { 
-			box,
-			old_head,
-			old_head + insert_count,
-			0,
-		}
-		undo_push(manager, undo_box_remove_selection, &item, size_of(Undo_Item_Box_Remove_Selection))
+		item := Undo_Item_Box_Remove_Selection{box, old_head, old_head + insert_count, 0}
+		undo_push(
+			manager,
+			undo_box_remove_selection,
+			&item,
+			size_of(Undo_Item_Box_Remove_Selection),
+		)
 	}
 }
 
@@ -635,22 +651,24 @@ box_check_shift :: proc(box: ^Box, shift: bool) {
 }
 
 Caret_Translation :: enum {
-	Start,	
-	End,	
-	Character_Left,	
-	Character_Right,	
-	Word_Left,	
-	Word_Right,	
+	Start,
+	End,
+	Character_Left,
+	Character_Right,
+	Word_Left,
+	Word_Right,
 }
 
 box_translate_caret :: proc(box: ^Box, translation: Caret_Translation, shift: bool) {
 	translation_backwards :: proc(translation: Caret_Translation) -> bool {
 		#partial switch translation {
-			case .Start, .Character_Left, .Word_Left: return true
-			case: return false
+		case .Start, .Character_Left, .Word_Left:
+			return true
+		case:
+			return false
 		}
 	}
-	
+
 	backwards := translation_backwards(translation)
 
 	// on non shift & selection, stop selection
@@ -676,23 +694,28 @@ box_translate_caret :: proc(box: ^Box, translation: Caret_Translation, shift: bo
 	pos := box.head
 
 	switch translation {
-		case .Start: {
+	case .Start:
+		{
 			pos = 0
 		}
 
-		case .End: {
+	case .End:
+		{
 			pos = len(runes)
 		}
 
-		case .Character_Left: {
+	case .Character_Left:
+		{
 			pos -= 1
 		}
 
-		case .Character_Right: {
+	case .Character_Right:
+		{
 			pos += 1
 		}
 
-		case .Word_Left: {
+	case .Word_Left:
+		{
 			for pos > 0 && runes[pos - 1] == ' ' {
 				pos -= 1
 			}
@@ -702,7 +725,8 @@ box_translate_caret :: proc(box: ^Box, translation: Caret_Translation, shift: bo
 			}
 		}
 
-		case .Word_Right: {
+	case .Word_Right:
+		{
 			for pos < len(runes) && runes[pos] == ' ' {
 				pos += 1
 			}
@@ -718,30 +742,35 @@ box_translate_caret :: proc(box: ^Box, translation: Caret_Translation, shift: bo
 
 box_set_caret_dp :: proc(box: ^Box, di: int, dp: rawptr) {
 	switch di {
-		case 0: {
-			goal := cast(^int) dp
+	case 0:
+		{
+			goal := cast(^int)dp
 			box.head = goal^
 			box.tail = goal^
 		}
 
-		case BOX_START: {
+	case BOX_START:
+		{
 			box.head = 0
 			box.tail = 0
 		}
 
-		case BOX_END: {
+	case BOX_END:
+		{
 			length := cutf8.count(ss_string(&box.ss))
 			box.head = length
 			box.tail = box.head
 		}
 
-		case BOX_SELECT_ALL: {
+	case BOX_SELECT_ALL:
+		{
 			length := cutf8.count(ss_string(&box.ss))
 			box.tail = 0
 			box.head = length
 		}
 
-		case: {
+	case:
+		{
 			log.info("UI: text box unsupported caret setting")
 		}
 	}
@@ -758,24 +787,14 @@ box_low_and_high :: proc(box: ^Box) -> (low, high: int) {
 //////////////////////////////////////////////
 
 // layout textual caret
-box_layout_caret :: proc(
-	box: ^Box,
-	scaled_size: int,
-	scaling: f32,
-	x, y: int,
-) -> RectI {
+box_layout_caret :: proc(box: ^Box, scaled_size: int, scaling: f32, x, y: int) -> RectI {
 	caret_x, line := wrap_layout_caret(&gs.fc, box.wrapped_lines, box.head)
 	width := int(2 * scaling)
-	return rect_wh(
-		x + caret_x,
-		y + line * scaled_size,
-		width,
-		scaled_size,
-	)
+	return rect_wh(x + caret_x, y + line * scaled_size, width, scaled_size)
 }
 
 box_render_selection :: proc(
-	target: ^Render_Target, 
+	target: ^Render_Target,
 	box: ^Box,
 	x, y: int,
 	color: Color,
@@ -787,7 +806,8 @@ box_render_selection :: proc(
 
 	state := wrap_state_init(&gs.fc, box.wrapped_lines, box.head, box.tail)
 	scaled_size := f32(state.isize / 10)
-	color := color_alpha(color, alpha)
+	color := color
+	color = color_alpha(color, alpha)
 
 	for wrap_state_iter(&gs.fc, &state) {
 		translated := RectI {
@@ -810,29 +830,29 @@ element_box_mouse_selection :: proc(
 	dragging: bool,
 	x_offset: f32,
 	scaled_size: int,
-) -> (found: bool) {
+) -> (
+	found: bool,
+) {
 	// state used in word / single mouse selection
 	Mouse_Character_Selection :: struct {
 		relative_x, relative_y: int,
-		old_x, x: int,
-		old_y, y: int,	
-		codepoint_offset: int, // offset after a text line ended in rune codepoints ofset
-		width_codepoint: int, // global to store width
+		old_x, x:               int,
+		old_y, y:               int,
+		codepoint_offset:       int, // offset after a text line ended in rune codepoints ofset
+		width_codepoint:        int, // global to store width
 	}
 	mcs: Mouse_Character_Selection
 
 	// single character collision
 	mcs_check_single :: proc(
-		using mcs: ^Mouse_Character_Selection,
+		mcs: ^Mouse_Character_Selection,
 		b: ^Box,
 		codepoint_index: int,
 		dragging: bool,
 	) -> bool {
-		if relative_x < x && 
-			old_y < relative_y && 
-			relative_y < y {
-			goal := ((x - old_x) / 2 + old_x)
-			comp := relative_x > goal
+		if mcs.relative_x < mcs.x && mcs.old_y < mcs.relative_y && mcs.relative_y < mcs.y {
+			goal := ((mcs.x - mcs.old_x) / 2 + mcs.old_x)
+			comp := mcs.relative_x > goal
 			off := int(comp)
 
 			if !dragging {
@@ -853,15 +873,15 @@ element_box_mouse_selection :: proc(
 	// old_x is word_start_x
 	// x is word_end_x
 	mcs_check_word :: proc(
-		using mcs: ^Mouse_Character_Selection,
+		mcs: ^Mouse_Character_Selection,
 		b: ^Box,
 		word_start: int,
 		word_end: int,
 	) -> bool {
-		if old_x < relative_x && 
-			relative_x < x && 
-			old_y < relative_y && 
-			relative_y < y {
+		if mcs.old_x < mcs.relative_x &&
+		   mcs.relative_x < mcs.x &&
+		   mcs.old_y < mcs.relative_y &&
+		   mcs.relative_y < mcs.y {
 			// set first result of word selection, further selection extends range
 			if !b.word_selection_started {
 				b.word_selection_started = true
@@ -875,10 +895,10 @@ element_box_mouse_selection :: proc(
 
 			// visually position the caret left / right when selecting the first word
 			if word_start == b.word_start && word_end == b.word_end {
-				diff := x - old_x
-				
+				diff := mcs.x - mcs.old_x
+
 				// middle of word crossed, swap
-				if old_x < relative_x && relative_x < old_x + diff / 2 {
+				if mcs.old_x < mcs.relative_x && mcs.relative_x < mcs.old_x + diff / 2 {
 					low, high = high, low
 				}
 			}
@@ -899,19 +919,19 @@ element_box_mouse_selection :: proc(
 	}
 
 	// clamp to left when x is below 0 and y above 
-	mcs_check_line_last :: proc(using mcs: ^Mouse_Character_Selection, b: ^Box) {
-		if relative_y > y {
-			b.head = codepoint_offset
+	mcs_check_line_last :: proc(mcs: ^Mouse_Character_Selection, b: ^Box) {
+		if mcs.relative_y > mcs.y {
+			b.head = mcs.codepoint_offset
 		}
 	}
 
-	using mcs
-	relative_x = element.window.cursor_x - element.bounds.l + int(x_offset)
-	relative_y = element.window.cursor_y - element.bounds.t
+	mcs.relative_x = element.window.cursor_x - element.bounds.l + int(x_offset)
+	mcs.relative_y = element.window.cursor_y - element.bounds.t
 	// fmt.eprintln(relative_x, element.window.cursor_x, element.bounds.l, x_offset)
 
 	ctx := &gs.fc
-	clicks := clicks % 3
+	clicks := clicks
+	clicks = clicks % 3
 	// clicks = 0
 
 	// reset on new click start
@@ -919,19 +939,19 @@ element_box_mouse_selection :: proc(
 		b.word_selection_started = false
 		b.line_selection_started = false
 	}
-	
+
 	// NOTE single line clicks
 	if clicks == 0 {
 		// loop through lines
 		search_line: for text in b.wrapped_lines {
 			// set state
-			y += scaled_size
-			x = 0
-			old_x = 0
+			mcs.y += scaled_size
+			mcs.x = 0
+			mcs.old_x = 0
 
 			// clamp to left when x is below 0 and y above 
-			if relative_x < 0 && relative_y < old_y {
-				b.head = codepoint_offset
+			if mcs.relative_x < 0 && mcs.relative_y < mcs.old_y {
+				b.head = mcs.codepoint_offset
 				break
 			}
 
@@ -941,38 +961,38 @@ element_box_mouse_selection :: proc(
 			index: int
 			quad: fontstash.Quad
 			for fontstash.TextIterNext(ctx, &iter, &quad) {
-				old_x = x
-				x = int(iter.nextx)
+				mcs.old_x = mcs.x
+				mcs.x = int(iter.nextx)
 
 				// check mouse collision
-				if mcs_check_single(&mcs, b, index + codepoint_offset, dragging) {
-					codepoint_offset += iter.codepointCount
+				if mcs_check_single(&mcs, b, index + mcs.codepoint_offset, dragging) {
+					mcs.codepoint_offset += iter.codepointCount
 					break search_line
 				}
 
 				index += 1
 			}
 
-			x += scaled_size
-			mcs_check_single(&mcs, b, iter.codepointCount + codepoint_offset, dragging)
-			codepoint_offset += iter.codepointCount
+			mcs.x += scaled_size
+			mcs_check_single(&mcs, b, iter.codepointCount + mcs.codepoint_offset, dragging)
+			mcs.codepoint_offset += iter.codepointCount
 
 			// do line end?
-			if relative_x > x && !dragging {
-				b.head = codepoint_offset
-				b.tail = codepoint_offset
+			if mcs.relative_x > mcs.x && !dragging {
+				b.head = mcs.codepoint_offset
+				b.tail = mcs.codepoint_offset
 				break search_line
 			}
 
-			old_y = y
+			mcs.old_y = mcs.y
 		}
 
 		mcs_check_line_last(&mcs, b)
 
 		// NOTE safety clamp in case we extended too far
-		b.head = min(b.head, codepoint_offset)
+		b.head = min(b.head, mcs.codepoint_offset)
 		if !dragging {
-			b.tail = min(b.tail, codepoint_offset)
+			b.tail = min(b.tail, mcs.codepoint_offset)
 		}
 	} else {
 		if clicks == 1 {
@@ -982,9 +1002,9 @@ element_box_mouse_selection :: proc(
 			// loop through lines
 			search_line_word: for text in b.wrapped_lines {
 				// set state
-				old_x = 0 
-				x = 0
-				y += scaled_size
+				mcs.old_x = 0
+				mcs.x = 0
+				mcs.y += scaled_size
 
 				// temp
 				index_word_start: int = -1
@@ -994,8 +1014,8 @@ element_box_mouse_selection :: proc(
 				x_whitespace_start: int = -1
 
 				// clamp to left
-				if relative_x < 0 && relative_y < old_y && b.word_selection_started {
-					b.head = codepoint_offset
+				if mcs.relative_x < 0 && mcs.relative_y < mcs.old_y && b.word_selection_started {
+					b.head = mcs.codepoint_offset
 					break
 				}
 
@@ -1006,74 +1026,94 @@ element_box_mouse_selection :: proc(
 				for fontstash.TextIterNext(ctx, &iter, &quad) {
 					// check for word completion
 					if index_word_start != -1 && iter.codepoint == ' ' {
-						old_x = x_word_start
-						mcs_check_word(&mcs, b, codepoint_offset + index_word_start, codepoint_offset + index)
+						mcs.old_x = x_word_start
+						mcs_check_word(
+							&mcs,
+							b,
+							mcs.codepoint_offset + index_word_start,
+							mcs.codepoint_offset + index,
+						)
 						index_word_start = -1
 					}
-					
+
 					// check for starting codepoint being letter
 					if index_word_start == -1 && !unicode.is_space(iter.codepoint) {
 						index_word_start = index
-						x_word_start = x
+						x_word_start = mcs.x
 					}
 
 					// check for space word completion
 					if index_whitespace_start != -1 && !unicode.is_space(iter.codepoint) {
-						old_x = x_whitespace_start
-						mcs_check_word(&mcs, b, codepoint_offset + index_whitespace_start, codepoint_offset + index)
+						mcs.old_x = x_whitespace_start
+						mcs_check_word(
+							&mcs,
+							b,
+							mcs.codepoint_offset + index_whitespace_start,
+							mcs.codepoint_offset + index,
+						)
 						index_whitespace_start = -1
 					}
 
 					// check for starting whitespace being letter
 					if index_whitespace_start == -1 && iter.codepoint == ' ' {
 						index_whitespace_start = index
-						x_whitespace_start = x
+						x_whitespace_start = mcs.x
 					}
 
 					// set new position
-					x = int(iter.nextx)
+					mcs.x = int(iter.nextx)
 					codepoint_last = iter.codepoint
 					index += 1
 				}
 
 				// finish whitespace and end letter
 				if index_whitespace_start != -1 && codepoint_last == ' ' {
-					old_x = x_whitespace_start
-					mcs_check_word(&mcs, b, codepoint_offset + index_whitespace_start, codepoint_offset + iter.codepointCount)
+					mcs.old_x = x_whitespace_start
+					mcs_check_word(
+						&mcs,
+						b,
+						mcs.codepoint_offset + index_whitespace_start,
+						mcs.codepoint_offset + iter.codepointCount,
+					)
 				}
 
 				// finish end word
 				if index_word_start != -1 && !unicode.is_space(codepoint_last) {
-					old_x = x_word_start
-					mcs_check_word(&mcs, b, codepoint_offset + index_word_start, codepoint_offset + iter.codepointCount)
+					mcs.old_x = x_word_start
+					mcs_check_word(
+						&mcs,
+						b,
+						mcs.codepoint_offset + index_word_start,
+						mcs.codepoint_offset + iter.codepointCount,
+					)
 				}
 
-				old_y = y
-				codepoint_offset += iter.codepointCount
+				mcs.old_y = mcs.y
+				mcs.codepoint_offset += iter.codepointCount
 			}
 
 			mcs_check_line_last(&mcs, b)
 		} else {
 			// LINE
-			for text, line_index in b.wrapped_lines {
-				y += scaled_size
+			for text in b.wrapped_lines {
+				mcs.y += scaled_size
 				codepoints := cutf8.count(text)
 
-				if old_y < relative_y && relative_y < y {
+				if mcs.old_y < mcs.relative_y && mcs.relative_y < mcs.y {
 					if !b.line_selection_started {
-						b.line_selection_start = codepoint_offset
-						b.line_selection_end = codepoint_offset + codepoints
-						b.line_selection_start_y = y
+						b.line_selection_start = mcs.codepoint_offset
+						b.line_selection_end = mcs.codepoint_offset + codepoints
+						b.line_selection_start_y = mcs.y
 						b.line_selection_started = true
-					} 
+					}
 
-					goal_left := codepoint_offset
-					goal_right := codepoint_offset + codepoints
+					goal_left := mcs.codepoint_offset
+					goal_right := mcs.codepoint_offset + codepoints
 
 					low := min(goal_left, b.line_selection_start)
 					high := max(goal_right, b.line_selection_end)
 
-					if relative_y > b.line_selection_start_y {
+					if mcs.relative_y > b.line_selection_start_y {
 						low, high = high, low
 					}
 
@@ -1082,8 +1122,8 @@ element_box_mouse_selection :: proc(
 					break
 				}
 
-				codepoint_offset += codepoints
-				old_y = y
+				mcs.codepoint_offset += codepoints
+				mcs.old_y = mcs.y
 			}
 		}
 	}
@@ -1096,52 +1136,52 @@ element_box_mouse_selection :: proc(
 //////////////////////////////////////////////
 
 Undo_Item_Box_Rune_Append :: struct {
-	box: ^Box,
+	box:       ^Box,
 	codepoint: rune,
 }
 
 Undo_Item_Box_Rune_Pop :: struct {
-	box: ^Box,
+	box:  ^Box,
 	// just jump back to saved pos instead of calc rune size
 	head: int,
 	tail: int,
 }
 
 undo_box_rune_append :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Rune_Append) item
+	data := cast(^Undo_Item_Box_Rune_Append)item
 	ss_append(&data.box.ss, data.codepoint)
-	item := Undo_Item_Box_Rune_Pop { data.box, data.box.head, data.box.head }
+	item := Undo_Item_Box_Rune_Pop{data.box, data.box.head, data.box.head}
 	data.box.head += 1
 	data.box.tail += 1
 	undo_push(manager, undo_box_rune_pop, &item, size_of(Undo_Item_Box_Rune_Pop))
 }
 
 undo_box_rune_pop :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Rune_Pop) item
+	data := cast(^Undo_Item_Box_Rune_Pop)item
 	// codepoint, codepoint_width := strings.pop_rune(&data.box.builder)
 	codepoint, _ := ss_pop(&data.box.ss)
 	data.box.head = data.head
 	data.box.tail = data.tail
 	item := Undo_Item_Box_Rune_Append {
-		box = data.box,
+		box       = data.box,
 		codepoint = codepoint,
 	}
 	undo_push(manager, undo_box_rune_append, &item, size_of(Undo_Item_Box_Rune_Append))
 }
 
 Undo_Item_Box_Rune_Insert_At :: struct {
-	box: ^Box,
-	index: int,
+	box:       ^Box,
+	index:     int,
 	codepoint: rune,
 }
 
 Undo_Item_Box_Rune_Remove_At :: struct {
-	box: ^Box,
+	box:   ^Box,
 	index: int,
 }
 
 undo_box_rune_insert_at :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Rune_Insert_At) item
+	data := cast(^Undo_Item_Box_Rune_Insert_At)item
 	ss_insert_at(&data.box.ss, data.index, data.codepoint)
 
 	// increase head & tail always
@@ -1150,14 +1190,14 @@ undo_box_rune_insert_at :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// create reversal remove at
 	item := Undo_Item_Box_Rune_Remove_At {
-		box = data.box,
+		box   = data.box,
 		index = data.index,
 	}
 	undo_push(manager, undo_box_rune_remove_at, &item, size_of(Undo_Item_Box_Rune_Remove_At))
 }
 
 undo_box_rune_remove_at :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Rune_Remove_At) item
+	data := cast(^Undo_Item_Box_Rune_Remove_At)item
 
 	removed_codepoint, _ := ss_remove_at(&data.box.ss, data.index)
 
@@ -1167,22 +1207,22 @@ undo_box_rune_remove_at :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// create reversal to insert at
 	item := Undo_Item_Box_Rune_Insert_At {
-		box = data.box,
-		index = data.index,
+		box       = data.box,
+		index     = data.index,
 		codepoint = removed_codepoint,
 	}
 	undo_push(manager, undo_box_rune_insert_at, &item, size_of(Undo_Item_Box_Rune_Insert_At))
 }
 
 Undo_Item_Box_Remove_Selection :: struct {
-	box: ^Box,
-	head: int,
-	tail: int,
+	box:              ^Box,
+	head:             int,
+	tail:             int,
 	forced_selection: int, // determines how head & tail are set
 }
 
 undo_box_remove_selection :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Remove_Selection) item
+	data := cast(^Undo_Item_Box_Remove_Selection)item
 
 	ss := &data.box.ss
 	temp: [SS_SIZE]u8
@@ -1201,14 +1241,14 @@ undo_box_remove_selection :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 	// push upfront to instantly write to the popped runes section
 	bytes := undo_push(
-		manager, 
-		undo_box_insert_string, 
+		manager,
+		undo_box_insert_string,
 		&item,
 		size_of(Undo_Item_Box_Insert_String) + temp_size,
 	)
 
 	// copy into the byte space
-	temp_root := cast(^u8) &bytes[size_of(Undo_Item_Box_Insert_String)]
+	temp_root := &bytes[size_of(Undo_Item_Box_Insert_String)]
 	mem.copy(temp_root, &temp[0], temp_size)
 
 	// set to new location
@@ -1217,19 +1257,19 @@ undo_box_remove_selection :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 Undo_Item_Box_Insert_String :: struct {
-	box: ^Box,
-	head: int,
-	tail: int,
+	box:              ^Box,
+	head:             int,
+	tail:             int,
 	// determines how head & tail are set
 	// 0 = not forced
 	// 1 = forced from right
 	// -1 = forced from left
 	forced_selection: int,
-	text_size: int, // upcoming text to read
+	text_size:        int, // upcoming text to read
 }
 
 undo_box_insert_string :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Insert_String) item
+	data := cast(^Undo_Item_Box_Insert_String)item
 	ss := &data.box.ss
 
 	low := min(data.head, data.tail)
@@ -1245,16 +1285,11 @@ undo_box_insert_string :: proc(manager: ^Undo_Manager, item: rawptr) {
 		data.box.tail = data.tail
 	}
 
-	text_root := cast(^u8) (uintptr(item) + size_of(Undo_Item_Box_Insert_String))
+	text_root := cast(^u8)(uintptr(item) + size_of(Undo_Item_Box_Insert_String))
 	popped_text := strings.string_from_ptr(text_root, data.text_size)
 	ss_insert_string_at(ss, low, popped_text)
 
-	item := Undo_Item_Box_Remove_Selection { 
-		data.box,
-		data.head,
-		data.tail,
-		data.forced_selection,
-	}
+	item := Undo_Item_Box_Remove_Selection{data.box, data.head, data.tail, data.forced_selection}
 	undo_push(manager, undo_box_remove_selection, &item, size_of(Undo_Item_Box_Remove_Selection))
 }
 
@@ -1279,7 +1314,7 @@ undo_box_insert_string :: proc(manager: ^Undo_Manager, item: rawptr) {
 // 		data.tail,
 // 		before_size,
 // 	}
-	
+
 // 	fmt.eprintln("1", string(ss_temp_chars[:before_size]), before_size)
 // 	output := undo_push(
 // 		manager, 
@@ -1304,7 +1339,7 @@ Undo_String_Uppercased_Content :: struct {
 }
 
 Undo_String_Uppercased_Content_Reset :: struct {
-	ss: ^Small_String,
+	ss:         ^Small_String,
 	byte_count: int, // content coming in the next bytes
 }
 
@@ -1313,41 +1348,46 @@ Undo_String_Lowercased_Content :: struct {
 }
 
 Undo_String_Lowercased_Content_Reset :: struct {
-	ss: ^Small_String,
+	ss:         ^Small_String,
 	byte_count: int, // content coming in the next bytes
 }
 
 undo_box_uppercased_content_reset :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_String_Uppercased_Content_Reset) item
+	data := cast(^Undo_String_Uppercased_Content_Reset)item
 
 	// reset and write old content
-	text_root := cast(^u8) (uintptr(item) + size_of(Undo_String_Uppercased_Content_Reset))
+	text_root := cast(^u8)(uintptr(item) + size_of(Undo_String_Uppercased_Content_Reset))
 	text_content := strings.string_from_ptr(text_root, data.byte_count)
 	ss_set_string(data.ss, text_content)
 
 	output := Undo_String_Uppercased_Content {
 		ss = data.ss,
 	}
-	undo_push(manager, undo_box_uppercased_content, &output, size_of(Undo_String_Uppercased_Content))
+	undo_push(
+		manager,
+		undo_box_uppercased_content,
+		&output,
+		size_of(Undo_String_Uppercased_Content),
+	)
 }
 
 undo_box_uppercased_content :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_String_Uppercased_Content) item
+	data := cast(^Undo_String_Uppercased_Content)item
 
 	// generate output before mods
 	output := Undo_String_Uppercased_Content_Reset {
-		ss = data.ss,
+		ss         = data.ss,
 		byte_count = int(data.ss.length),
 	}
 	bytes := undo_push(
-		manager, 
-		undo_box_uppercased_content_reset, 
-		&output, 
+		manager,
+		undo_box_uppercased_content_reset,
+		&output,
 		size_of(Undo_String_Uppercased_Content_Reset) + output.byte_count,
 	)
 
 	// write actual text content
-	text_root := cast(^u8) &bytes[size_of(Undo_String_Uppercased_Content_Reset)]
+	text_root := &bytes[size_of(Undo_String_Uppercased_Content_Reset)]
 	mem.copy(text_root, &data.ss.buf[0], output.byte_count)
 
 	// write uppercased
@@ -1355,36 +1395,41 @@ undo_box_uppercased_content :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 undo_box_lowercased_content_reset :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_String_Lowercased_Content_Reset) item
+	data := cast(^Undo_String_Lowercased_Content_Reset)item
 
 	// reset and write old content
-	text_root := cast(^u8) (uintptr(item) + size_of(Undo_String_Lowercased_Content_Reset))
+	text_root := cast(^u8)(uintptr(item) + size_of(Undo_String_Lowercased_Content_Reset))
 	text_content := strings.string_from_ptr(text_root, data.byte_count)
 	ss_set_string(data.ss, text_content)
 
 	output := Undo_String_Lowercased_Content {
 		ss = data.ss,
 	}
-	undo_push(manager, undo_box_lowercased_content, &output, size_of(Undo_String_Lowercased_Content))
+	undo_push(
+		manager,
+		undo_box_lowercased_content,
+		&output,
+		size_of(Undo_String_Lowercased_Content),
+	)
 }
 
 undo_box_lowercased_content :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_String_Lowercased_Content) item
+	data := cast(^Undo_String_Lowercased_Content)item
 
 	// generate output before mods
 	output := Undo_String_Lowercased_Content_Reset {
-		ss = data.ss,
+		ss         = data.ss,
 		byte_count = int(data.ss.length),
 	}
 	bytes := undo_push(
-		manager, 
-		undo_box_lowercased_content_reset, 
-		&output, 
+		manager,
+		undo_box_lowercased_content_reset,
+		&output,
 		size_of(Undo_String_Lowercased_Content_Reset) + output.byte_count,
 	)
 
 	// write actual text content
-	text_root := cast(^u8) &bytes[size_of(Undo_String_Lowercased_Content_Reset)]
+	text_root := &bytes[size_of(Undo_String_Lowercased_Content_Reset)]
 	mem.copy(text_root, &data.ss.buf[0], output.byte_count)
 
 	// write lowercased
@@ -1392,13 +1437,13 @@ undo_box_lowercased_content :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 Undo_Item_Box_Head_Tail :: struct {
-	box: ^Box,
+	box:  ^Box,
 	head: int,
 	tail: int,
 }
 
 undo_box_head_tail :: proc(manager: ^Undo_Manager, item: rawptr) {
-	data := cast(^Undo_Item_Box_Head_Tail) item
+	data := cast(^Undo_Item_Box_Head_Tail)item
 	old_head := data.box.head
 	old_tail := data.box.tail
 	data.box.head = data.head
@@ -1409,21 +1454,17 @@ undo_box_head_tail :: proc(manager: ^Undo_Manager, item: rawptr) {
 }
 
 box_head_tail_push :: proc(manager: ^Undo_Manager, box: ^Box) {
-	item := Undo_Item_Box_Head_Tail {
-		box,
-		box.head,
-		box.tail,
-	}
+	item := Undo_Item_Box_Head_Tail{box, box.head, box.tail}
 	undo_push(manager, undo_box_head_tail, &item, size_of(Undo_Item_Box_Head_Tail))
 }
 
 // state to pass
 KBox :: struct {
-	box: ^Box,
-	um: ^Undo_Manager,
+	box:     ^Box,
+	um:      ^Undo_Manager,
 	element: ^Element,
 	by_task: bool,
-	failed: bool, // result that can be checked
+	failed:  bool, // result that can be checked
 }
 
 // local state used by kbox commands since they need a bit of state
@@ -1441,7 +1482,7 @@ kbox_move_right :: proc(du: u32) {
 	ctrl, shift := du_ctrl_shift(du)
 	move: Caret_Translation = ctrl ? .Word_Right : .Character_Right
 	box_translate_caret(kbox.box, move, shift)
-	box_check_shift(kbox.box, shift)		
+	box_check_shift(kbox.box, shift)
 }
 
 kbox_move_home :: proc(du: u32) {
@@ -1493,7 +1534,7 @@ kbox_backspace :: proc(du: u32) {
 	if kbox.box.head == old_head && kbox.box.tail == old_tail {
 		kbox.failed = true
 		return
-	} 
+	}
 
 	if kbox.by_task {
 		power_mode_issue_spawn()
@@ -1520,7 +1561,7 @@ kbox_delete :: proc(du: u32) {
 	}
 
 	if kbox.by_task {
-		power_mode_issue_spawn()	
+		power_mode_issue_spawn()
 	}
 }
 
@@ -1566,5 +1607,5 @@ kbox_undo_redo :: proc(du: u32, do_redo: bool) {
 	}
 }
 
-kbox_undo :: proc(du: u32) { kbox_undo_redo(du, false) }
-kbox_redo :: proc(du: u32) { kbox_undo_redo(du, true) }
+kbox_undo :: proc(du: u32) {kbox_undo_redo(du, false)}
+kbox_redo :: proc(du: u32) {kbox_undo_redo(du, true)}
