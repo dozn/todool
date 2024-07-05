@@ -13,7 +13,6 @@ BONUS_CONSECUTIVE :: -(SCORE_GAP_START + SCORE_GAP_EXTENSION)
 BONUS_FIRST_CHAR_MULTIPLIER :: 2
 
 Fuzz_Result :: struct {
-	// byte offsets
 	start, end: int,
 	score:      int,
 }
@@ -57,17 +56,10 @@ fuzz_calculate_score :: proc(
 ) -> int {
 	pidx, score, consecutive, first_bonus: int
 	in_gap: bool
-	//prev_class := '';
-
-	if sidx > 0 {
-		//prev_class = trunes[sidx - 1];
-	}
 
 	for idx := sidx; idx < eidx; {
-		// for idx := sidx; idx < eidx; idx += 1 {
 		schar, size := utf8_peek(trunes[idx:])
 		defer idx += size
-		// c := trunes[idx]
 
 		if !case_sensitive {
 			schar = unicode.to_lower(schar)
@@ -76,7 +68,6 @@ fuzz_calculate_score :: proc(
 		pchar, _ := utf8_peek(prunes[pidx:])
 		if schar == pchar {
 			score += SCORE_MATCH
-			//bonus := bonusFor(prevClass, class)
 			bonus := 0
 
 			if consecutive == 0 {
@@ -110,8 +101,6 @@ fuzz_calculate_score :: proc(
 			consecutive = 0
 			first_bonus = 0
 		}
-
-		//prev_class = class
 	}
 
 	return score
@@ -138,10 +127,6 @@ fuzz_match_v1 :: proc(
 		schar, ssize := utf8_peek(haystack[index:])
 		defer index += ssize
 
-		// if !case_sensitive {
-		// 	c = unicode.to_lower(c)
-		// }
-
 		pchar, psize := utf8_peek(pattern[pidx:])
 
 		if schar == pchar {
@@ -163,10 +148,6 @@ fuzz_match_v1 :: proc(
 
 		for index := utf8_prev(haystack, 0, eidx); index >= sidx; {
 			schar, _ := utf8_peek(haystack[index:])
-
-			// if !case_sensitive {
-			// 	c = unicode.to_lower(c)
-			// }
 
 			pchar, _ := utf8_peek(pattern[pidx:])
 

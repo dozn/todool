@@ -92,7 +92,6 @@ timing_timestamp_is_today :: proc(stamp: Timestamp) -> bool {
 }
 
 time_get_weekday :: proc(date: time.Time) -> time.Weekday {
-	// abs := time._time_abs(date)
 	abs := u64(date._nsec / 1e9 + time.UNIX_TO_ABSOLUTE)
 	sec := (abs + u64(time.Weekday.Monday) * time.SECONDS_PER_DAY) % time.SECONDS_PER_WEEK
 	return time.Weekday(int(sec) / time.SECONDS_PER_DAY)
@@ -351,8 +350,6 @@ time_date_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 	case .Right_Down:
 		{
 			element_hide(td, true)
-			// time_date_format = Time_Date_Format((int(time_date_format) + 1) % len(Time_Date_Format))
-			// window_repaint(window_main)
 		}
 	}
 
@@ -443,7 +440,6 @@ panel_grid_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 		{
 			width := int(f32(panel.cell_width) * SCALE)
 			height := int(f32(panel.cell_height) * SCALE)
-			// height := element_message(element, .Get_Height)
 			bounds := element.bounds
 			current := rect_cut_top(&bounds, height)
 
@@ -461,7 +457,6 @@ panel_grid_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 		{
 			target := element.window.target
 			render_rect_outline(target, element.bounds, theme.text_default, ROUNDNESS)
-			// render_rect(target, element.bounds, RED, ROUNDNESS)
 		}
 
 	case .Get_Width:
@@ -660,9 +655,6 @@ menu_date_spawn :: proc(ptr: ^time.Time, x, y: int) {
 	p.shadow = true
 	p.background_index = 2
 	p.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		//TODO: Declared but not used.
-		// panel := cast(^Panel)element
-
 		if msg == .Mouse_Scroll_Y {
 			_, offset_month, offset_day := menu_date_timing()
 

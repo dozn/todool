@@ -67,7 +67,6 @@ dialog_init :: proc(
 
 	// write content
 	element_animation_start(res)
-	// window_animate(parent.window, &res.shadow, 1, .Quadratic_Out, time.Millisecond * 200)
 	undo_manager_init(&res.um, mem.Kilobyte * 2)
 
 	// panel 
@@ -113,8 +112,6 @@ dialog_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> 
 
 	case .Layout:
 		{
-			//TODO: Declared but not used.
-			// w := element.window
 			assert(len(element.children) != 0)
 
 			panel := cast(^Panel)element.children[0]
@@ -236,7 +233,6 @@ dialog_build_elements :: proc(dialog: ^Dialog, format: string, args: ..string) {
 					arg_index += 1
 					box := text_box_init(row, {.HF}, text)
 
-					// box.um = &dialog.um
 					element_message(box, .Value_Changed)
 					dialog.text_box = box
 

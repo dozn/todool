@@ -500,8 +500,6 @@ gs_update_after_load :: proc() {
 	add :: proc(index: int, pixel_size: int) {
 		font := fontstash.__getFont(&gs.fc, index)
 		isize := i16(pixel_size * 10)
-		//TODO: Declared but not used.
-		// scale := fontstash.__getPixelHeightScale(font, f32(isize / 10))
 
 		for i in 0 ..< 95 {
 			fontstash.__getGlyph(&gs.fc, font, rune(32 + i), isize)
@@ -1756,7 +1754,6 @@ gs_message_loop :: proc() {
 		for w in dll.iterate_next(&iter) {
 			if w.update_check != nil {
 				w.update_next |= w->update_check()
-				// fmt.eprintln("\tCHECK?", w.update_next)
 			}
 		}
 
@@ -1773,15 +1770,12 @@ gs_message_loop :: proc() {
 			any_update |= w.update_next
 		}
 
-		// fmt.eprintln("UPD?", any_update)
-
 		if any_update {
 			gs_process_animations()
 			gs_process_events()
 		} else {
-			// wait for event to arive
-			//TODO: "available" declared but not used.
-			_ = sdl.WaitEvent(nil)
+			// wait for event to arrive
+			sdl.WaitEvent(nil)
 			gs_process_events()
 		}
 
@@ -1930,10 +1924,6 @@ gs_window_count :: proc() -> (res: int) {
 // sdl helpers
 //////////////////////////////////////////////
 
-// window_border_toggle :: proc(window: ^Window) {
-// 	window.bordered = !window.bordered
-// }
-
 window_border_set :: proc(window: ^Window, state: bool) {
 	sdl.SetWindowBordered(window.w, cast(sdl.bool)state)
 }
@@ -1943,7 +1933,6 @@ window_fullscreen_toggle :: proc(window: ^Window) {
 		sdl.SetWindowFullscreen(window.w, {})
 	} else {
 		sdl.SetWindowFullscreen(window.w, sdl.WINDOW_FULLSCREEN_DESKTOP)
-		// sdl.SetWindowFullscreen(window.w, sdl.WINDOW_FULLSCREEN)
 	}
 
 	window.fullscreened = !window.fullscreened
@@ -2169,9 +2158,6 @@ menu_add_item :: proc(
 ) {
 	button := button_init(menu.panel, flags, text)
 	button.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-		//TODO: Declared but not used.
-		// button := cast(^Button) element
-
 		if msg == .Clicked {
 			menu_close(element.window)
 		}
@@ -2241,8 +2227,6 @@ task_font_size :: proc(element: ^Element) -> int {
 		TASK_SCALE *
 		10
 	return int(i16(scaled_size) / 10)
-	// scaled_size := f32(element.font_options == nil ? DEFAULT_FONT_SIZE : element.font_options.size) * TASK_SCALE
-	// return int(scaled_size)
 }
 
 fcs_icon :: proc(scaling: f32) -> int {

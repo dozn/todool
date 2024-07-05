@@ -213,7 +213,7 @@ keymap_combo_match :: proc(
 
 // execute a command by combo from a keymap
 keymap_combo_execute :: proc(keymap: ^Keymap, combo: string) -> bool {
-	// // lookup last used for speedup
+	//TODO: lookup last used for speedup
 	// if keymap.combo_last != nil {
 	// 	if cmd, ok := keymap_combo_match(keymap, keymap.combo_last, combo); ok {
 	// 		cmd(keymap.combo_last.du)
@@ -311,10 +311,6 @@ keymap_push_combo_opt :: proc(keymap: ^Keymap, combo: string, command: string, d
 	res := keymap_command_find_combo(keymap, command_index, du)
 
 	if res != nil {
-		//TODO: Declared but not used.
-		// c1 := string(res.combo[:res.combo_index])
-		//TODO: Declared but not used.
-		// real_cmd := keymap_get_command(keymap, command_index)
 		return
 	}
 

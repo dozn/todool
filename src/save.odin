@@ -179,7 +179,6 @@ save_views :: proc(buffer: ^bytes.Buffer) -> (err: Save_Error) {
 	bytes.buffer_write_byte(buffer, u8(len(Mode))) or_return
 	bytes.buffer_write_byte(buffer, u8(app.mmpp.mode)) or_return
 	save_scale := u8(math.round(TASK_SCALE * 100))
-	// fmt.eprintln("+++", save_scale, TASK_SCALE)
 	bytes.buffer_write_byte(buffer, save_scale) or_return
 
 	// camera positions
@@ -418,29 +417,6 @@ save_all :: proc(file_path: string) -> (err: Save_Error) {
 
 		valid_length = len(app.pool.list)
 
-		// // find lowest removed node
-		// last_removed: bool
-		// removed_index := len(removed) - 1
-		// valid_length = len(app.pool.list)
-		// for list_index := len(app.pool.list) - 1; list_index >= 0; list_index -= 1 {
-		// 	if removed_index >= 0 && removed[removed_index] == list_index {
-		// 		last_removed = true
-		// 		removed_index -= 1
-		// 	} else {
-		// 		if last_removed {
-		// 			valid_length = list_index + 1
-		// 		}
-
-		// 		// stop even if length wasnt set
-		// 		break
-		// 	}
-		// }
-
-		// if valid_length != 0 {
-		// 	t := app.pool.list[valid_length - 1]
-		// 	fmt.eprintln("SEE", t.removed, valid_length)
-		// }
-		// 
 		return
 	}
 
@@ -581,8 +557,6 @@ load_tags :: proc(data: ^[]u8) -> (err: Save_Error) {
 	switch version {
 	case 1:
 		{
-			//TODO: Declared but not used.
-			// string_length: u8
 			for i in 0 ..< 8 {
 				result := advance_string_u8(&input) or_return
 				ss := sb.tags.names[i]
@@ -621,7 +595,6 @@ load_views :: proc(data: ^[]u8) -> (err: Save_Error) {
 			scale := advance_byte(&input) or_return
 			load_scale := f32(scale) / 100
 
-			// fmt.eprintln("---", scale, load_scale)
 			scaling_set(SCALE, load_scale)
 
 			temp: i32be
@@ -655,7 +628,6 @@ load_data :: proc(data: ^[]u8) -> (err: Save_Error) {
 
 				// init data but put it on the free list
 				if skip {
-					// fmt.eprintln("\tFREED at", i)
 					task := task_init(0, "", false)
 					task.removed = true
 
@@ -676,8 +648,6 @@ load_data :: proc(data: ^[]u8) -> (err: Save_Error) {
 				task.tags = t.tags
 				task.state = Task_State(t.state)
 			}
-
-			// fmt.eprintln("FREE LIST", app.pool.free_list)
 		}
 
 	case:
@@ -962,13 +932,10 @@ json_save_misc :: proc(path: string) -> bool {
 	// adjust by window border
 	{
 		t, l, b, r := window_border_size(app.window_main)
-		// fmt.eprintln("BORDER", t, l, b, r)
-		// fmt.eprintln("WINDOW DIMS BEFORE", window_x, window_y, window_width, window_height)
 		window_y -= t
 		window_x -= l
 		window_width += r
 		window_height += b
-		// fmt.eprintln("WINDOW DIMS AFTER", window_x, window_y, window_width, window_height)
 	}
 
 	value := Misc_Save_Load {
@@ -1077,13 +1044,9 @@ json_load_misc :: proc(path: string) -> bool {
 
 			w := max(misc.hidden.window_width, 200)
 			h := max(misc.hidden.window_height, 200)
-			// fmt.eprintln("WINDOW DIMS LOAD WH", misc.hidden.window_x, misc.hidden.window_y, w, h)
-			// x := misc.hidden.window_x
-			// y := misc.hidden.window_y
 			// clamp window based on total display width/height
 			x := min(max(misc.hidden.window_x, 0) + w, total_width) - w
 			y := min(max(misc.hidden.window_y, 0) + h, total_height) - h
-			// fmt.eprintln("WINDOW DIMS CLAMPED WH", x, y)
 
 			window_set_position(app.window_main, x, y)
 			window_set_size(app.window_main, w, h)

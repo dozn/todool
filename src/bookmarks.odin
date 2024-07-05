@@ -24,8 +24,6 @@ bookmark_nearest_index :: proc(backward: bool) -> int {
 	if app_filter_not_empty() {
 		// look for anything higher than the current index
 		filter_index := app_task_head().filter_index
-		//TODO: Declared but not used.
-		// found: bool
 
 		if backward {
 			// backward

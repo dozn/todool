@@ -150,21 +150,3 @@ undo_is_in_undo :: #force_inline proc(manager: ^Undo_Manager) -> bool {
 undo_is_in_normal :: #force_inline proc(manager: ^Undo_Manager) -> bool {
 	return manager.state == .Normal
 }
-
-// // peek the latest undo step in the queue
-// undo_peek :: proc(manager: ^Undo_Manager) -> (
-// 	callback: Undo_Callback,
-// 	item: rawptr,
-// 	ok: bool,
-// ) {
-// 	stack := manager.state == .Undoing ? &manager.redo : &manager.undo
-// 	if len(stack) == 0 {
-// 		return
-// 	}
-
-// 	footer := cast(^Undo_Item_Footer) &stack[len(stack) - size_of(Undo_Item_Footer)]
-// 	callback = footer.callback
-// 	item = &stack[len(stack) - size_of(Undo_Item_Footer) - footer.byte_count]
-// 	ok = true
-// 	return
-// }

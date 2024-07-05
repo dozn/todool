@@ -30,7 +30,7 @@ task_pool_push_new :: proc(pool: ^Task_Pool, check_freed: bool) -> (task: ^Task)
 		freed_index := pool.free_list[len(pool.free_list) - 1]
 		pop(&pool.free_list)
 
-		// NOTE we need to set the removed flag to false again, as they could still be marked!
+		//NOTE: we need to set the removed flag to false again, as they could still be marked!
 		task = &pool.list[freed_index]
 		task.removed = false
 

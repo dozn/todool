@@ -193,8 +193,6 @@ search_find :: proc(backwards: bool) {
 	app.task_tail = task.filter_index
 
 	result := search.results[result_index]
-	//TODO: Declared but not used.
-	// text := task_string(task)
 	task.box.head = int(result.end)
 	task.box.tail = int(result.start)
 
@@ -216,22 +214,12 @@ search_draw_highlights :: proc(target: ^Render_Target, panel: ^Mode_Panel) {
 	}
 
 	render_push_clip(target, panel.clip)
-	//TODO: Declared but not used.
-	// ds: cutf8.Decode_State
-	//TODO: Declared but not used.
-	// color := theme.text_good
 	search_draw_index: int
 	GRAY :: Color{100, 100, 100, 255}
 
 	for entry in search.entries {
 		task := entry.ptr
 		length := entry.length
-		//TODO: Declared but not used.
-		// top := task.box.bounds.t
-		//TODO: Declared but not used.
-		// height := rect_heightf(task.box.bounds)
-		//TODO: Declared but not used.
-		// scaled_size := f32(fcs_task(&task.element))
 
 		for i in 0 ..< int(length) {
 			result := search.results[entry.result_offset + i]
@@ -251,7 +239,6 @@ search_draw_highlights :: proc(target: ^Render_Target, panel: ^Mode_Panel) {
 					task.box.bounds.t + int(f32(state.y) * scaled_size),
 				}
 
-				// color := theme.text_good
 				color := search.current_index == search_draw_index ? GRAY : theme.caret
 				render_rect_outline(target, rect, color, 0, 2)
 			}
@@ -302,11 +289,8 @@ button_state_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 
 search_init :: proc(parent: ^Element) {
 	margin_scaled := int(TEXT_PADDING * SCALE)
-	//TODO: Declared but not used.
-	// height := int(DEFAULT_FONT_SIZE * SCALE) + margin_scaled * 2
 	p := panel_init(parent, {.Panel_Default_Background, .Panel_Horizontal}, margin_scaled, 5)
 	p.background_index = 2
-	// p.shadow = true
 	p.z_index = 2
 
 	{

@@ -168,8 +168,6 @@ sidebar_mode_toggle :: proc(to: Sidebar_Mode) {
 
 // button with highlight based on selected
 sidebar_button_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	//TODO: Declared but not used.
-	// button := cast(^Icon_Button)element
 	mode := cast(^Sidebar_Mode)element.data
 
 	#partial switch msg {
@@ -269,7 +267,7 @@ sidebar_panel_init :: proc(parent: ^Element) {
 				fcs_ahv()
 				fcs_color(color)
 				render_string_rect(target, element.bounds, text)
-				// erender_string_aligned(element, text, element.bounds, color, .Middle, .Middle)
+
 				return 1
 			}
 
@@ -321,7 +319,6 @@ sidebar_enum_panel_init :: proc(parent: ^Element) {
 		}
 		panel := panel_init(element, flags, 5, 5)
 		panel.background_index = 1
-		// panel.z_index = 2
 
 		header := label_init(panel, {.Label_Center}, title)
 		header.font_options = &app.font_options_header
@@ -707,7 +704,6 @@ sidebar_enum_panel_init :: proc(parent: ^Element) {
 // saved to save file!
 Archive_Button :: struct {
 	using element: Element,
-	// builder: strings.Builder,
 	ss:            Small_String,
 	visual_index:  int,
 }

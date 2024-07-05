@@ -12,7 +12,6 @@ Statusbar :: struct {
 	label_task_count: ^Label,
 	vim_panel:        ^Panel,
 	vim_mode_label:   ^Vim_Label,
-	// label_vim_buffer: ^Label,
 }
 statusbar: Statusbar
 
@@ -26,8 +25,6 @@ vim_label_init :: proc(parent: ^Element, flags: Element_Flags) -> (res: ^Vim_Lab
 }
 
 vim_label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	//TODO: Declared but not used.
-	// v := cast(^Vim_Label)element
 	text := vim.insert_mode ? "-- INSERT --" : "NORMAL"
 
 	#partial switch msg {
@@ -114,14 +111,6 @@ statusbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 }
 
 statusbar_update :: proc(statusbar: ^Statusbar) {
-	// update checkbox if hidden by key command
-	// {
-	// 	checkbox := &sb.options.checkbox_hide_statusbar
-	// 	if checkbox.state != (.Hide in s.state.flags) {
-	// 		checkbox_set(checkbox, (.Hide not_in s.state.flags))
-	// 	}
-	// }
-
 	if .Hide in statusbar.stat.flags {
 		return
 	}

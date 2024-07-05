@@ -33,28 +33,6 @@ pomodoro_destroy :: proc() {
 	sdl.RemoveTimer(pomodoro.timer_id)
 }
 
-// spawn & move particles down
-pomodoro_celebration_spawn :: proc(x, y: f32) {
-	// if !pomodoro.celebrating {
-	// 	pomodoro.celebrating = true
-	// 	// fmt.eprintln("called", mmpp.bounds)
-
-	// 	for c in &pomodoro.celebration {
-	// 		c.skip = false
-	// 		c.x	= x
-	// 		c.y = y
-	// 		c.color = color_rgb_rand()
-
-	// 		WIDTH :: 400
-	// 		x_goal := x + rand.float32() * WIDTH - WIDTH / 2 
-	// 		anim_duration := time.Millisecond * time.Duration(rand.float32() * 4000 + 500)
-	// 		anim_wait := rand.float64() * 2
-	// 		window_animate(app.window_main, &c.y, f32(app.mmpp.bounds.b + 50), .Quadratic_In_Out, anim_duration, anim_wait)
-	// 		window_animate(app.window_main, &c.x, x_goal, .Quadratic_Out, anim_duration, anim_wait)
-	// 	}
-	// }
-}
-
 // render particles as circles
 pomodoro_celebration_render :: proc(target: ^Render_Target) {
 	if pomodoro.celebrating {
@@ -95,7 +73,6 @@ time_stop_stopwatch :: proc(stopwatch: ^time.Stopwatch) -> (diff: time.Duration)
 pomodoro_stopwatch_stop_add :: proc() {
 	diff := time_stop_stopwatch(&pomodoro.stopwatch)
 	pomodoro.accumulated += diff
-	// pomodoro.accumulated += time.Minute * 61		
 }
 
 pomodoro_stopwatch_toggle :: proc() {
@@ -153,24 +130,15 @@ pomodoro_stopwatch_hot_toggle :: proc(du: u32) {
 pomodoro_stopwatch_diff :: proc() -> time.Duration {
 	accumulated := time.stopwatch_duration(pomodoro.stopwatch)
 	wanted_minutes := pomodoro_time_index(pomodoro.index)
-	// log.info("WANTED", wanted_minutes, accumulated)
 	return (time.Minute * time.Duration(wanted_minutes)) - accumulated
 }
 
 // writes the pomodoro label
 pomodoro_label_format :: proc() {
-	//TODO: Declared but not used.
-	// duration := pomodoro_stopwatch_diff()
-	//TODO: Declared but not used.
-	// _, minutes, seconds := duration_clock(duration)
-
 	// TODO could check for diff and only repaint then!
 	b := &sb.pomodoro_label.builder
 	strings.builder_reset(b)
-	//TODO: Declared but not used.
-	// text := fmt.sbprintf(b, "%2d:%2d", int(minutes), int(seconds))
 	element_repaint(sb.pomodoro_label)
-	// log.info("PRINTED", text, duration)
 }
 
 // on interval update the pomodoro label
@@ -266,18 +234,5 @@ pomodoro_update :: proc() {
 		strings.builder_reset(b)
 		hours, minutes, seconds := duration_clock(pomodoro.accumulated)
 		fmt.sbprintf(b, "Total: %dh %dm %ds", hours, minutes, seconds)
-	}
-
-	{
-		// if 
-		// 	sb.stats.gauge_work_today.position > 1.0 && 
-		// 	!pomodoro.celebration_goal_reached && 
-		// 	sb.stats.gauge_work_today.bounds != {} && 
-		// 	(.Hide not_in sb.enum_panel.flags) {
-		// 	pomodoro.celebration_goal_reached = true
-		// 	x := sb.stats.gauge_work_today.bounds.l + rect_width_halfed(sb.stats.gauge_work_today.bounds)
-		// 	y := sb.stats.gauge_work_today.bounds.t
-		// 	pomodoro_celebration_spawn(f32(x), f32(y))
-		// }
 	}
 }

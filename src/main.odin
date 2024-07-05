@@ -81,7 +81,6 @@ main :: proc() {
 	}
 
 	{
-		// add_shortcuts(window)
 		menu_split, menu_bar := todool_menu_bar(&window.element)
 		app.task_menu_bar = menu_bar
 		panel := panel_init(menu_split, {.Panel_Horizontal, .Tab_Movement_Allowed})
@@ -89,8 +88,6 @@ main :: proc() {
 		sidebar_panel_init(panel)
 
 		{
-			//TODO: Declared but not used.
-			// rect := window.rect
 			split := split_pane_init(
 				panel,
 				{.Split_Pane_Hidable, .VF, .HF, .Tab_Movement_Allowed},
@@ -115,7 +112,6 @@ main :: proc() {
 		}
 	}
 
-	// tasks_load_tutorial()
 	tasks_load_file()
 
 	// do actual loading later because options might change the path
@@ -146,8 +142,6 @@ main_box_key_combination :: proc(window: ^Window, msg: Message, di: int, dp: raw
 }
 
 main_update :: proc(window: ^Window) {
-	// fmt.eprintln(font_regular, font_bold, font_icon)
-
 	rendered_glyphs_clear()
 	wrapped_lines_clear()
 
@@ -227,9 +221,6 @@ main_update :: proc(window: ^Window) {
 
 			// add spell checking results to user dictionary
 			spell_check_mapping_words_add(ss_string(&task.box.ss))
-
-			// save last state
-			// app.caret.last_state = task.state
 		}
 	}
 
@@ -269,8 +260,6 @@ window_main_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr
 	#partial switch msg {
 	case .Key_Combination:
 		{
-			//TODO: Declared but not used.
-			// handled := true
 			combo := (cast(^string)dp)^
 
 			if window_focused_shown(window) || window.dialog != nil {

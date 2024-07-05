@@ -101,7 +101,6 @@ power_mode_spawn_along_task_text :: proc(task: ^Task, task_count: int) {
 		ds: cutf8.Decode_State
 		count: int
 
-		//TODO: Commented-out "codepoint".
 		for _, i in cutf8.ds_iter(&ds, text) {
 			glyph := task.box.rendered_glyphs[i]
 			delay := f32(count) * 0.002 + f32(task_count) * 0.02

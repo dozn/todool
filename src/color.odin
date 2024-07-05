@@ -16,16 +16,6 @@ color_rgb_rand :: proc() -> Color {
 	return {u8(rand.float32() * 255), u8(rand.float32() * 255), u8(rand.float32() * 255), 255}
 }
 
-// color_hsl_rand :: proc(gen: ^rand.Rand = nil, s := f32(1), v := f32(1)) -> Color {
-// 	hue := rand.float32()
-// 	return color_hsv_to_rgb(hue, s, v)
-// }
-
-// color_hsl_golden_rand :: proc(gen: ^rand.Rand = nil, s := f32(1), v := f32(1)) -> Color {
-// 	hue := math.mod(rand.float32() + GOLDEN_RATIO, 1)
-// 	return color_hsv_to_rgb(hue, s, v)
-// }
-
 color_hsluv_rand :: proc(s := f64(1), l := f64(0.5)) -> Color {
 	hue := rand.float64() * 360
 	r, g, b := hsluv_to_rgb(hue, s * 100, l * 100)
@@ -116,14 +106,11 @@ color_rgb_to_hsv :: proc(col: Color) -> (f32, f32, f32, f32) {
 	h, s, v: f32
 	h = 0.0
 	s = 0.0
-	// v  = (c_min + c_max) * 0.5
 	v = c_max
 
 	if c_max != c_min {
 		delta := c_max - c_min
-		// s = c_max == 0 ? 0 : 1 - (1 * c_min / c_max)
 		s = c_max == 0 ? 0 : delta / c_max
-		// s = d / (2.0 - c_max - c_min) if v > 0.5 else d / (c_max + c_min)
 		switch {
 		case c_max == r:
 			{

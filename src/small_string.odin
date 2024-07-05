@@ -133,8 +133,6 @@ ss_insert_at :: proc(ss: ^Small_String, index: int, c: rune) -> bool {
 
 		// check if we even have enough space
 		if int(ss.length) + size <= SS_SIZE {
-			//TODO: Declared but not used.
-			// undex := u8(index)
 			info, found := _ss_find_byte_index_info(ss, index)
 
 			// check for append situation still since its faster then copy
@@ -176,9 +174,7 @@ ss_remove_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 	}
 
 	// no need to copy if at end
-	// if info.byte_index != ss.length {
 	copy(ss.buf[info.byte_index:ss.length], ss.buf[info.byte_index + info.size:ss.length])
-	// }
 
 	ss.length -= info.size
 	c = info.codepoint
@@ -201,9 +197,7 @@ ss_delete_at :: proc(ss: ^Small_String, index: int) -> (c: rune, ok: bool) {
 	}
 
 	// skip empty anyway
-	if ss.length == u8(info.size) {
-		// fmt.eprintln("skip")
-	} else {
+	if ss.length != u8(info.size) {
 		copy(ss.buf[info.byte_index:ss.length], ss.buf[info.byte_index + info.size:ss.length])
 	}
 

@@ -50,14 +50,6 @@ combo_iterate :: proc(text: ^string) -> (res: string, ok: bool) {
 	return
 }
 
-// combo_iterate_test :: proc() {
-// 	text := "ctrl+up         ctrl+down"
-// 	fmt.eprintln(text)
-// 	for combo in combo_iterate(&text) {
-// 		fmt.eprintf("\tres: %s\n", combo)
-// 	}
-// }
-
 todool_delete_on_empty :: proc(du: u32) {
 	if app_filter_empty() {
 		return
@@ -175,8 +167,6 @@ todool_indent_jump_same_prev :: proc(du: u32) {
 		return
 	}
 
-	//TODO: Declared but not used.
-	// task_current := app_task_head()
 	shift := du_shift(du)
 	goal := find_same_indentation_backwards(app.task_head, true)
 
@@ -197,8 +187,6 @@ todool_indent_jump_same_next :: proc(du: u32) {
 		return
 	}
 
-	//TODO: Declared but not used.
-	// task_current := app_task_head()
 	shift := du_shift(du)
 	goal := find_same_indentation_forwards(app.task_head, true)
 
@@ -263,32 +251,6 @@ todool_copy_tasks_to_clipboard :: proc(du: u32) {
 	clipboard_set_with_builder_prefilled()
 	window_repaint(app.window_main)
 }
-
-// todool_change_task_selection_state_to :: proc(state: Task_State) {
-// 	if app_filter_empty() {
-// 		return
-// 	}
-
-// 	manager := mode_panel_manager_begin()
-// 	change_count: int
-
-// 	// shift all states in direction
-// 	iter := lh_iter_init()
-// 	for task in lh_iter_step(&iter) {
-// 		if !task_has_children(task) && task.state != state {
-// 			// save old set
-// 			task_set_state_undoable(manager, task, state, change_count)
-// 			change_count += 1
-// 		}
-// 	}
-
-// 	if change_count > 0 {
-// 		app.task_state_progression = .Update_Animated
-// 		task_head_tail_push(manager)
-// 		undo_group_end(manager)
-// 		window_repaint(app.window_main)
-// 	}
-// }
 
 task_change_state_to :: proc(
 	manager: ^Undo_Manager,
@@ -507,8 +469,6 @@ undo_filter_fold :: proc(manager: ^Undo_Manager, item: rawptr) {
 	)
 	byte_root := &bytes[size_of(Undo_Item_Filter_Unfold)]
 	mem.copy(byte_root, raw_data(task.filter_children), data.count * size_of(int))
-	//TODO: Declared but not used.
-	// byte_slice := mem.slice_ptr(cast(^int)byte_root, data.count)
 
 	// push to children, subtract from filter
 	copy(app.pool.filter[idx:], app.pool.filter[idx + data.count:])
@@ -799,7 +759,6 @@ shift_complex :: proc(manager: ^Undo_Manager, a, b: int) {
 	total_low := a
 	middle := b
 	total_high := b + b_count
-	// fmt.eprintln("total", total_low, middle, total_high)
 	undo_push_shift_slice(manager, total_low, total_high)
 	f := app.pool.filter
 
@@ -1039,8 +998,6 @@ task_swap_animation :: proc(list_index: int) {
 		// offset by the separator properly as it doesnt count to the task bounds
 		task.top_old = task.element.bounds.t - int(SEPARATOR_SIZE * SCALE)
 		task.top_offset = -SEPARATOR_SIZE * SCALE
-		// task.top_old = task.element.bounds.t
-		// task.top_offset = 0
 	} else {
 		task.top_old = task.element.bounds.t
 		task.top_offset = 0
@@ -1177,8 +1134,6 @@ Undo_Item_Task_Pop :: struct {
 undo_task_append :: proc(manager: ^Undo_Manager, item: rawptr) {
 	data := cast(^Undo_Item_Task_Append)item
 
-	//TODO: Declared but not used.
-	// task := app_task_list(data.list_index)
 	append(&app.pool.filter, data.list_index)
 
 	output := Undo_Item_Task_Pop{}
@@ -1199,25 +1154,6 @@ undo_task_pop :: proc(manager: ^Undo_Manager, item: rawptr) {
 	pop(&app.pool.filter)
 	undo_push(manager, undo_task_append, &output, size_of(Undo_Item_Task_Append))
 }
-
-// Undo_Item_Task_Clear :: struct {
-// 	old_length: int,
-// }
-
-// undo_task_clear :: proc(manager: ^Undo_Manager, item: rawptr) {
-// 	data := cast(^Undo_Item_Task_Clear) item
-// 	log.info("manager.state", manager.state, data.old_length)
-
-// 	if manager.state == .Undoing {
-// 		raw := cast(^mem.Raw_Dynamic_Array) &app.mode_panel.children
-// 		raw.len = data.old_length
-// 	} else {
-// 		data.old_length = len(app.pool.filter)
-// 		clear(&app.mode_panel.children)
-// 	}
-
-// 	undo_push(manager, undo_task_clear, item, size_of(Undo_Item_Task_Clear))
-// }
 
 Undo_Item_Task_Timestamp :: struct {
 	task: ^Task,
@@ -1380,7 +1316,6 @@ todool_load :: proc(du: u32) {
 
 	if len(app.last_save_location.buf) == 0 {
 		default_path = gs_string_to_cstring(gs.base_path)
-		// log.info("----")
 	} else {
 		trimmed_path := strings.to_string(app.last_save_location)
 
@@ -1750,8 +1685,7 @@ app_save_close :: proc() -> (handled: bool) {
 	if options_autosave() {
 		todool_save(COMBO_FALSE)
 	} else if app.dirty != app.dirty_saved {
-		//TODO: "dialog" declared but not used.
-		_ = dialog_spawn(app.window_main, proc(dialog: ^Dialog, result: string) {
+		dialog_spawn(app.window_main, proc(dialog: ^Dialog, result: string) {
 				if dialog.result == .Default {
 					todool_save(COMBO_FALSE)
 					window_try_quit(app.window_main, true)
@@ -1762,11 +1696,6 @@ app_save_close :: proc() -> (handled: bool) {
 
 		handled = true
 	}
-
-	// if !handled {
-	// 	// on non handle just destroy all windows
-	// 	gs_destroy_all_windows()
-	// }
 
 	return handled
 }
@@ -1976,8 +1905,6 @@ todool_sort_locals :: proc(du: u32) {
 }
 
 todool_scale :: proc(du: u32) {
-	//TODO: Declared but not used.
-	// amt := f32(du_pos_neg(du)) * 0.1
 	factor := task_scale_factoring(du_pos_neg(du))
 	scaling_set(SCALE, TASK_SCALE * factor)
 
@@ -2155,22 +2082,6 @@ vim_visual_reptition_check :: proc(task: ^Task, direction: int) -> bool {
 			app.task_tail = vim.rep_task.filter_index
 			vim.rep_task = task
 
-			// cam := mode_panel_cam()
-			// if visuals_use_animations() {
-			// 	element_animation_start(app.mode_panel)
-			// 	cam.ax.animating = true
-			// 	cam.ax.direction = CAM_CENTER
-			// 	cam.ax.goal = int(vim.rep_cam_x)
-
-			// 	cam.ay.animating = true
-			// 	cam.ay.direction = CAM_CENTER
-			// 	cam.ay.goal = int(vim.rep_cam_y)
-			// } else {
-			// 	cam.offset_x = vim.rep_cam_x
-			// 	cam.offset_y = vim.rep_cam_y
-			// }
-			// cam.freehand = false
-
 			window_repaint(app.window_main)
 			return true
 		}
@@ -2287,6 +2198,5 @@ todool_focus_parent :: proc(du: u32) {
 		}
 	}
 
-	// app.task_tail = app.task_head
 	window_repaint(app.window_main)
 }

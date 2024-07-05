@@ -551,8 +551,6 @@ toggle_simple_message :: proc(element: ^Element, msg: Message, di: int, dp: rawp
 	case .Paint_Recursive:
 		{
 			target := element.window.target
-			//TODO: Declared but not used.
-			// pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
 
 			icon: Icon = toggle.state ? .OK : .CANCEL
@@ -974,14 +972,8 @@ theme_editor_spawn :: proc(du: u32 = COMBO_EMPTY) {
 			theme_editor_menu_picker(button.color)
 		}
 
-		//TODO: Declared but not used.
-		// toggle1 := toggle_simple_init(line, false)
-
 		toggle2 := toggle_simple_init(line, false)
 		toggle2.invoke = theme_editor_root_set
-
-		// TODO: Declared but not used.
-		// variation := drag_float_init(line, {}, variation_value, 0, 1, "%.2f", false)
 	}
 
 	{
@@ -991,9 +983,6 @@ theme_editor_spawn :: proc(du: u32 = COMBO_EMPTY) {
 		)
 		p.margin = 10
 		p.message_user = proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-			//TODO: Declared but not used.
-			// panel := cast(^Panel) element
-
 			if msg == .Right_Down {
 				theme_editor_menu_colors()
 				return 1

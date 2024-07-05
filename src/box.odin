@@ -156,7 +156,6 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 				low, high := box_low_and_high(box)
 				back_color := theme_panel(.Front)
 
-				//TODO: Commented-out "codepoint".
 				for _, i in cutf8.ds_iter(&ds, _text) {
 					if (low <= i && i < high) {
 						glyph := box.rendered_glyphs[i]
@@ -169,8 +168,6 @@ text_box_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			}
 
 			if focused {
-				// selection := 
-
 				x := text_bounds.l
 				y := text_bounds.t + rect_height_halfed(text_bounds) - scaled_size / 2
 				caret := rect_wh(x + caret_x, y, int(2 * SCALE), scaled_size)
@@ -291,8 +288,6 @@ text_box_init :: proc(
 
 // just paints the text based on text color
 task_box_paint_default_selection :: proc(box: ^Task_Box, scaled_size: int, blend: f32) {
-	//TODO: Declared but not used.
-	// focused := box.window.focused == box
 	target := box.window.target
 
 	color: Color
@@ -335,8 +330,6 @@ task_box_paint_default_selection :: proc(box: ^Task_Box, scaled_size: int, blend
 
 // just paints the text based on text color
 task_box_paint_default :: proc(box: ^Task_Box, scaled_size: int) {
-	//TODO: Declared but not used.
-	// focused := box.window.focused == box
 	target := box.window.target
 
 	color: Color
@@ -426,7 +419,6 @@ task_box_init :: proc(
 	res: ^Task_Box,
 ) {
 	res = element_init(Task_Box, parent, flags, task_box_message, allocator, index_at)
-	// box_init(&res.box)
 	ss_set_string(&res.box.ss, text)
 	box_move_end_simple(&res.box)
 	return
@@ -601,7 +593,6 @@ box_replace :: proc(
 			item := Undo_Item_Box_Rune_Remove_At{box, low}
 
 			undo_box_rune_remove_at(manager, &item)
-			// log.info("remove selection ONE")
 		} else {
 			item := Undo_Item_Box_Remove_Selection{box, box.head, box.tail, forced_selection}
 			undo_box_remove_selection(manager, &item)
@@ -927,12 +918,10 @@ element_box_mouse_selection :: proc(
 
 	mcs.relative_x = element.window.cursor_x - element.bounds.l + int(x_offset)
 	mcs.relative_y = element.window.cursor_y - element.bounds.t
-	// fmt.eprintln(relative_x, element.window.cursor_x, element.bounds.l, x_offset)
 
 	ctx := &gs.fc
 	clicks := clicks
 	clicks = clicks % 3
-	// clicks = 0
 
 	// reset on new click start
 	if clicks == 0 && !dragging {
@@ -1158,7 +1147,6 @@ undo_box_rune_append :: proc(manager: ^Undo_Manager, item: rawptr) {
 
 undo_box_rune_pop :: proc(manager: ^Undo_Manager, item: rawptr) {
 	data := cast(^Undo_Item_Box_Rune_Pop)item
-	// codepoint, codepoint_width := strings.pop_rune(&data.box.builder)
 	codepoint, _ := ss_pop(&data.box.ss)
 	data.box.head = data.head
 	data.box.tail = data.tail
@@ -1292,47 +1280,6 @@ undo_box_insert_string :: proc(manager: ^Undo_Manager, item: rawptr) {
 	item := Undo_Item_Box_Remove_Selection{data.box, data.head, data.tail, data.forced_selection}
 	undo_push(manager, undo_box_remove_selection, &item, size_of(Undo_Item_Box_Remove_Selection))
 }
-
-// Undo_Item_Box_Replace_String :: struct {
-// 	// box: ^Box,
-// 	ss: ^Small_String,
-// 	head: int,
-// 	tail: int,
-// 	text_length: int,
-// }
-
-// undo_box_replace_string :: proc(manager: ^Undo_Manager, item: rawptr) {
-// 	data := cast(^Undo_Item_Box_Replace_String) item
-
-// 	fmt.eprintln("data", data)
-// 	before_size, ok := ss_remove_selection(data.ss, data.head, data.tail, ss_temp_chars[:])
-// 	assert(ok)
-
-// 	out := Undo_Item_Box_Replace_String { 
-// 		data.ss,
-// 		data.head,
-// 		data.tail,
-// 		before_size,
-// 	}
-
-// 	fmt.eprintln("1", string(ss_temp_chars[:before_size]), before_size)
-// 	output := undo_push(
-// 		manager, 
-// 		undo_box_replace_string, 
-// 		&out, 
-// 		size_of(Undo_Item_Box_Replace_String) + before_size,
-// 	)
-// 	text_root := cast(^u8) &output[size_of(Undo_Item_Box_Replace_String)]
-// 	// text_root := cast(^u8) (uintptr(&output) + size_of(Undo_Item_Box_Replace_String))
-// 	mem.copy(text_root, &ss_temp_chars[0], before_size)
-// 	fmt.eprintln("~~~")
-
-// 	item := item
-// 	text_root = cast(^u8) (uintptr(item) + size_of(Undo_Item_Box_Replace_String))
-// 	popped_text := strings.string_from_ptr(text_root, data.text_length)
-// 	ss_insert_string_at(data.ss, data.head, popped_text)
-// 	fmt.eprintln("2", popped_text)
-// }
 
 Undo_String_Uppercased_Content :: struct {
 	ss: ^Small_String,

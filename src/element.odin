@@ -270,7 +270,6 @@ animate_to :: proc(value: ^f32, goal: f32, rate := f32(1), cuttoff := f32(0.001)
 	} else {
 		lambda := 10 * rate * visuals_animation_speed()
 		res := math.lerp(value^, goal, 1 - math.exp(-lambda * gs.dt))
-		// res := math.lerp(value^, end, 1 - math.pow(rate, core.dt * 10))
 
 		// skip cutoff
 		if abs(res - goal) < cuttoff {
@@ -553,7 +552,6 @@ element_deallocate :: proc(element: ^Element) -> bool {
 		}
 	}
 
-	// log.info("DESTROY?", (.Destroy in element.flags), element.name)
 	if .Destroy in element.flags {
 		// send the destroy message to clear data
 		element_message(element, .Deallocate)
@@ -605,18 +603,6 @@ element_children_sorted_or_unsorted :: proc(element: ^Element) -> (res: []^Eleme
 		slice.sort_by_cmp(res, proc(a, b: ^Element) -> slice.Ordering {
 			return a.z_index > b.z_index ? .Greater : .Less
 		})
-
-		// sort.quick_sort_proc(res, proc(a, b: ^Element) -> int {
-		// 	if a.z_index < b.z_index {
-		// 		return -1
-		// 	}	
-
-		// 	if a.z_index > b.z_index {
-		// 		return 1
-		// 	}
-
-		// 	return 0
-		// })
 	}
 
 	return
@@ -655,7 +641,6 @@ button_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> 
 			if res := element_message(element, .Button_Highlight, 0, &text_color); res != 0 {
 				if res == 1 {
 					rect := element.bounds
-					// rect.l = rect.r - (4 * SCALE)
 					rect.r = rect.l + int(4 * SCALE)
 					render_rect(target, rect, text_color, 0)
 				}
@@ -1043,14 +1028,7 @@ label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> i
 			fcs_color(label.color == nil ? theme.text_default : label.color^)
 			render_string_rect(target, bounds, text)
 		}
-
 	case .Update:
-		{
-			// if label.hover_info != "" {
-			// 	// element_repaint(element)
-			// }
-		}
-
 	case .Destroy:
 		{
 			delete(label.builder.buf)
@@ -1075,11 +1053,9 @@ label_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> i
 	// disables label intersection, sets to parent result
 	case .Find_By_Point_Recursive:
 		{
-			// if label.hover_info == "" {
 			point := cast(^Find_By_Point)dp
 			point.res = element.parent
 			return 1
-			// }
 		}
 	}
 
@@ -1636,17 +1612,6 @@ Panel :: struct {
 	background_index:           int,
 }
 
-// // clears the panel children, with care for the scrollbar
-// panel_clear_without_scrollbar :: proc(panel: ^Panel) {
-// 	// TODO probably leaks cuz children werent destroyed
-// 	clear(&panel.children)
-// 	// if panel.scrollbar == nil {
-// 	// 	clear(&panel.children)
-// 	// } else {
-// 	// 	resize(&panel.children, 1)
-// 	// }
-// }
-
 panel_calculate_per_fill :: proc(panel: ^Panel, hspace, vspace: int) -> (per_fill, count: int) {
 	horizontal := .Panel_Horizontal in panel.flags
 	available := horizontal ? hspace : vspace
@@ -1976,8 +1941,6 @@ panel_floaty_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 		{
 			w := int(f32(floaty.width))
 			h := int(f32(floaty.height))
-			// w := int(f32(floaty.width) * SCALE)
-			// h := int(f32(floaty.height) * SCALE)
 			rect := rect_wh(floaty.x, floaty.y, w, h)
 			element_move(panel, rect)
 		}
@@ -2075,11 +2038,6 @@ scrollbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 	case .Paint_Recursive:
 		{
 			target := element.window.target
-			//TODO: Declared but not used.
-			// rect := element.bounds
-
-			// render_rect(element.window.target, rect, theme.background[0])
-			// render_rect(target, rect, RED)
 
 			// leave early when rendering and forced visible
 			if scrollbar_inactive(scrollbar) && scrollbar.force_visible {
@@ -2163,9 +2121,6 @@ scrollbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 
 	case .Mouse_Scroll_X, .Mouse_Scroll_Y:
 		{
-			//TODO: Declared but not used.
-			// handled: int
-
 			// avoid unwanted scroll
 			if (msg == .Mouse_Scroll_X && !scrollbar.horizontal) ||
 			   (msg == .Mouse_Scroll_Y && scrollbar.horizontal) ||
@@ -2176,8 +2131,6 @@ scrollbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 			scrollbar_position_set(scrollbar, scrollbar.position - f32(di) * 20)
 			scrollbar_position_clamp(scrollbar)
 
-			// element_message(scrollbar, .Update)
-			// element_repaint(scrollbar)
 			out: Message = msg == .Mouse_Scroll_X ? .Scrolled_X : .Scrolled_Y
 			element_message(scrollbar.parent, out)
 			return 1
@@ -2185,10 +2138,6 @@ scrollbar_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) 
 
 	case .Layout:
 		{
-			//TODO: Declared and not used.
-			// hovered := element.window.hovered == element
-			// pressed := element.window.hovered == element
-
 			if scrollbar_inactive(scrollbar) && !scrollbar.force_visible {
 				scrollbar.position = 0
 				element.flags += {Element_Flag.Hide}
@@ -2270,36 +2219,6 @@ scrollbar_layout_help :: proc(
 	}
 }
 
-// // keep scrollbar in frame when in need for manual panning
-// scrollbar_keep_in_frame :: proc(
-// 	scrollbar: ^Scrollbar, 
-// 	bounds: RectI, 
-// 	up: bool,
-// ) {
-// 	scrollbar_size := scrollbar.horizontal ? rect_widthf(bounds) : rect_heightf(bounds)
-// 	MARGIN :: 50
-
-// 	if !scrollbar.horizontal {
-// 		if up && bounds.t - MARGIN <= 0 {
-// 			scrollbar.position = f32(bounds.t) + scrollbar.position - MARGIN
-// 			return
-// 		}
-
-// 		if !up && f32(bounds.b) + scrollbar.position + MARGIN >= scrollbar_size {
-// 			scrollbar.position = (f32(bounds.b) + scrollbar.position) - scrollbar_size + MARGIN
-// 			return
-// 		}
-// 	} else {			
-// 		// if up && bounds.t - MARGIN <= 0 {
-// 		// 	scrollbar.position = bounds.t + scrollbar.position - MARGIN
-// 		// } 
-
-// 		// if !up && bounds.b + scrollbar.position + MARGIN >= scrollbar_size {
-// 		// 	scrollbar.position = (bounds.b + scrollbar.position) - scrollbar_size + MARGIN
-// 		// }
-// 	}
-// }
-
 // wether the scrollbar is currently active
 scrollbar_inactive :: proc(scrollbar: ^Scrollbar) -> bool {
 	return scrollbar.page >= scrollbar.maximum || scrollbar.maximum <= 0 || scrollbar.page == 0
@@ -2341,9 +2260,6 @@ Color_Picker_HUE :: struct {
 }
 
 color_picker_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	//TODO: Declared but not used.
-	// picker := cast(^Color_Picker)element
-
 	SV_WIDTH :: 200
 	HUE_WIDTH :: 50
 
@@ -2372,13 +2288,6 @@ color_picker_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 		}
 
 	case .Paint_Recursive:
-		{
-			//TODO: Declared but not used.
-			// target := element.window.target
-
-			// render_rect(target, element.bounds, theme.background[0], 0)
-			// render_rect_outline(target, element.bounds, theme.text_default, 0, LINE_WIDTH)
-		}
 	}
 
 	return 0
@@ -2658,7 +2567,6 @@ toggle_selector_message :: proc(element: ^Element, msg: Message, di: int, dp: ra
 		{
 			sum_width: int
 			fcs_element(element)
-			// height := f32(element_message(element, .Get_Height))
 			scaled_size := efont_size(element)
 
 			for name in toggle.names {
@@ -2685,7 +2593,6 @@ toggle_selector_message :: proc(element: ^Element, msg: Message, di: int, dp: ra
 				r := toggle.cells[i]
 				if rect_contains(r, element.window.cursor_x, element.window.cursor_y) {
 					if toggle.value != i {
-						// toggle.value_old = toggle.value^
 						toggle.value = i
 						element_message(element, .Value_Changed)
 						element_animation_start(element)
@@ -2891,8 +2798,6 @@ splitter_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 			cursor := f32(vertical ? element.window.cursor_y : element.window.cursor_x)
 			splitter_size := math.round(SPLITTER_SIZE * SCALE)
 			space := rect_opt_vf(split.bounds, vertical) - splitter_size
-			//TODO: Declared but not used.
-			// old_weight := split.weight
 
 			if split.pixel_based {
 				unit :=
@@ -2956,7 +2861,6 @@ splitter_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 								split.weight = reversed ? space : 0
 								element_hide(left, true)
 							} else {
-								// split.weight = reversed ? low : split.weight_lowest
 								split.weight =
 									reversed ? space - split.weight_lowest : split.weight_lowest
 							}
@@ -2986,7 +2890,7 @@ splitter_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -
 				}
 			}
 
-			// TODO NESTING
+			//TODO: Nesting.
 			// if (splitPane->e.children[2]->messageClass == _UISplitPaneMessage 
 			// 		&& (splitPane->e.children[2]->flags & UI_SPLIT_PANE_VERTICAL) == (splitPane->e.flags & UI_SPLIT_PANE_VERTICAL)) {
 			// 	UISplitPane *subSplitPane = (UISplitPane *) splitPane->e.children[2];
@@ -3111,7 +3015,6 @@ linear_gauge_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 			slide := element.bounds
 			slide.r = slide.l + int(min(gauge.position, 1) * rect_widthf(slide))
 			render_rect(target, slide, theme.text_good, ROUNDNESS)
-			// render_rect_outline(target, element.bounds, text_color)
 
 			output := gauge_text(gauge)
 			fcs_element(element)
@@ -3156,62 +3059,6 @@ linear_gauge_init :: proc(
 	res.position = position
 	return
 }
-
-//////////////////////////////////////////////
-// Radial Gauge
-//////////////////////////////////////////////
-
-// Radial_Gauge :: struct {
-// 	using element: Element,
-// 	position: f32,
-// 	text: string,
-// }
-
-// radial_gauge_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-// 	gauge := cast(^Radial_Gauge) element
-
-// 	#partial switch msg {
-// 		case .Paint_Recursive: {
-// 			target := element.window.target
-// 			text_color := theme.text_default
-
-// 			render_arc(target, element.bounds, BLACK, 13 * SCALE, 3.14, 0)
-// 			render_arc(target, rect_margin(element.bounds, 2 * SCALE), GREEN, 10 * SCALE, gauge.position * math.PI, 0)
-
-// 			text := fmt.tprintf("%s: %d%%", gauge.text, int(gauge.position * 100))
-
-// 			fcs_element(element)
-// 			fcs_ahv()
-// 			fcs_color(text_color)
-// 			render_string_rect(target, element.bounds, text)
-// 		}
-
-// 		case .Get_Width: {
-// 			return int(200 * SCALE)
-// 		}
-
-// 		case .Get_Height: {
-// 			return int(200 * SCALE)
-// 		}
-
-// 	}
-
-// 	return 0
-// }
-
-// radial_gauge_init :: proc(
-// 	parent: ^Element,
-// 	flags: Element_Flags,
-// 	position: f32,
-// 	text: string,
-// 	allocator := context.allocator,
-// ) -> (res: ^Radial_Gauge) {
-// 	res = element_init(Radial_Gauge, parent, flags, radial_gauge_message, allocator)
-// 	res.text = text
-// 	res.position = position
-// 	res.font_options = &font_options_bold
-// 	return 
-// }
 
 //////////////////////////////////////////////
 // image display
@@ -3346,13 +3193,6 @@ toggle_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 			fcs_ahv(.LEFT, .MIDDLE)
 			fcs_color(theme.text_default)
 			fcs_icon(SCALE)
-
-			hovered := element.window.hovered == element
-			//TODO: Declared and not used.
-			// pressed := element.window.pressed == element
-			if hovered {
-				// render_hovered_highlight(target, top)
-			}
 
 			top.l += int(MARGIN * SCALE)
 			icon: Icon = (.Hide in toggle.panel.flags) ? .RIGHT_OPEN : .DOWN_OPEN
@@ -3578,8 +3418,6 @@ menu_bar_field_message :: proc(element: ^Element, msg: Message, di: int, dp: raw
 			target := element.window.target
 			pressed := element.window.pressed == element
 			hovered := element.window.hovered == element
-			//TODO: Declared but not used.
-			// text_color := hovered || pressed ? theme.text_default : theme.text_blank
 
 			if hovered || pressed || element.window.menu_info == field.menu_info {
 				render_hovered_highlight(target, element.bounds)
@@ -3607,9 +3445,6 @@ menu_split_init :: proc(parent: ^Element) -> (res: ^Menu_Split) {
 }
 
 menu_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	//TODO: Declared but not used.
-	// split := cast(^Menu_Split)element
-
 	#partial switch msg {
 	case .Layout:
 		{

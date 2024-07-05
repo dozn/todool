@@ -44,9 +44,6 @@ Changelog :: struct {
 changelog: Changelog
 
 changelog_window_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> int {
-	//TODO: Declard but not used.
-	// window := cast(^Window) element
-
 	#partial switch msg {
 	case .Destroy:
 		{
@@ -79,8 +76,6 @@ changelog_text_display_message :: proc(
 	#partial switch msg {
 	case .Layout:
 		{
-			//TODO: Declared but not used.
-			// bounds := element.bounds
 			// measure max string width and lines
 			iter := strings.to_string(td.builder)
 			width: int
@@ -233,7 +228,6 @@ changelog_result_pop_tasks :: proc() {
 			archive_push(&sb.archive, task_string(task))
 
 			goal := task.filter_index - offset
-			// fmt.eprintln("~~~", task_string(task), task.filter_index, goal)
 			item := Undo_Item_Task_Remove_At{goal, task.list_index}
 			undo_task_remove_at(manager, &item)
 			offset += 1
@@ -328,8 +322,6 @@ changelog_spawn :: proc(du: u32 = COMBO_EMPTY) {
 		{
 			toggle := toggle_panel_init(p1, {.HF}, {.Panel_Default_Background}, "Options", true)
 			p2 := toggle.panel
-			// p2 := panel_init(p1, { .HF, .Panel_Default_Background, .Panel_Horizontal })
-
 			p2.background_index = 2
 			p2.margin = 5
 			p2.rounded = true

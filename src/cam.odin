@@ -86,7 +86,6 @@ cam_update_check :: proc(cam: ^Pan_Camera) {
 			case .Centered:
 				{
 					cam_center_by_height_state(cam, app.mmpp.bounds, app.caret.rect.t)
-					// fmt.eprintln(app.mmpp.bounds, app.caret.rect)
 				}
 			}
 		}
@@ -140,17 +139,12 @@ cam_animate :: proc(cam: ^Pan_Camera, x: bool) -> bool {
 	}
 
 	real_goal := a.direction == CAM_CENTER ? f32(a.goal) : off^ + f32(a.direction * a.goal)
-	// fmt.eprintln("real_goal", x ? "x" : "y", direction == 0, real_goal, off^, direction)
 	res := animate_to_state(&a.animating, off, real_goal, 1 + lerp^, 1)
 
 	scrollbar_position_set(app.custom_split.vscrollbar, f32(-cam.offset_y))
 	scrollbar_position_set(app.custom_split.hscrollbar, f32(-cam.offset_x))
 
 	lerp^ = res ? lerp^ + 0.5 : 1
-
-	// if !res {
-	// 	fmt.eprintln("done", x ? "x" : "y", off^, goal)
-	// }
 
 	return res
 }
@@ -283,11 +277,8 @@ mode_panel_cam_bounds_check_x :: proc(
 					fcs_ahv(.LEFT, .TOP)
 					text_width := string_width(ss_string(&t.box.ss))
 
-					// if rect_width(mode_panel.bounds) - cam.margin_x * 2 
-
 					to_left = t.element.bounds.l
 					to_right = t.element.bounds.l + text_width
-					// rect := rect_wh(t.bounds.l, t.bounds.t, text_width, text_width + LINE_WIDTH, scaled_size)
 				}
 			}
 
@@ -319,14 +310,9 @@ mode_panel_cam_bounds_check_x :: proc(
 		}
 	}
 
-	// fmt.eprintln(goal, direction)
-
 	if check_stop {
 		if direction == 0 {
 			cam.ax.animating = false
-			// fmt.eprintln("FORCE STOP")
-		} else {
-			// fmt.eprintln("HAD DIRECTION X", goal, direction)
 		}
 	} else if direction != 0 {
 		element_animation_start(app.mmpp)
@@ -365,7 +351,6 @@ cam_center_by_height_state :: proc(cam: ^Pan_Camera, focus: RectI, y: int, max_h
 				top := y - int(cam.offset_y)
 				// NOTE clamps to the top of the kanban region youd like to see at max
 				offset_goal = min(height / 2 - top, cam.margin_y)
-				// fmt.eprintln(top, height, offset_goal, cam.offset_y)
 			}
 		}
 	}

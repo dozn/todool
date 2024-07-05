@@ -33,8 +33,6 @@ void main(void) {
 	v_pos = i_pos;
 	v_uv = i_uv;
 
-	// only available since glsl 4.0
-	// v_color = unpackUnorm4x8(i_color);
 	// unwrap color from uint
 	v_color = vec4(
 		float((i_color       ) & 0xFFu) / 255.0, 
@@ -48,7 +46,6 @@ void main(void) {
 
 	// calculate dimensions per vertex
 	vec2 center = i_uv;
-	// center = round(center);
 	vec2 half_dimensions = abs(v_pos - center);
 	v_adjusted_half_dimensions = half_dimensions - v_roundness + vec2(0.5, 0.5);
 

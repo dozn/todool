@@ -562,7 +562,6 @@ ds_string_selection :: proc(
 				end = ds.byte_offset
 			}
 
-			// codepoint_index = codepoint_count
 			ds.codepoint_count += 1
 		}
 

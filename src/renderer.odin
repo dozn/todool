@@ -203,7 +203,6 @@ render_target_init :: proc(window: ^sdl.Window) -> (res: ^Render_Target) {
 	texture_generate_from_png(res, .Drag, png_mode_icon_drag, "_drag", gl.CLAMP_TO_EDGE, gl.LINEAR)
 
 	res.shallow_uniform_sampler = gl.GetUniformLocation(res.shader_program, "u_sampler_custom")
-	// log.info("bind slots", gl.MAX_COMBINED_TEXTURE_IMAGE_UNITS)
 
 	return
 }
@@ -331,8 +330,6 @@ render_target_end :: proc(target: ^Render_Target, window: ^sdl.Window, width, he
 	last_dfactor: i32 = -1
 	last_func: i32 = -1
 
-	// fmt.eprintln("render")
-
 	for group in &target.groups {
 		rect_scissor(i32(height), group.clip)
 		vertice_count := group.vertex_end - group.vertex_start
@@ -359,7 +356,6 @@ render_target_end :: proc(target: ^Render_Target, window: ^sdl.Window, width, he
 
 			if last_func != group.blend_func {
 				gl.BlendEquation(u32(group.blend_func))
-				// fmt.eprintln("DIFF", gl.FUNC_SUBTRACT == group.blend_func)
 			}
 
 			// TODO use raw_data again on new master
@@ -431,39 +427,6 @@ render_push_clip :: proc(target: ^Render_Target, clip_goal: RectI) {
 //////////////////////////////////////////////
 // RENDER PRIMITIVES
 //////////////////////////////////////////////
-
-// render_arc :: proc(
-// 	target: ^Render_Target,
-// 	rect: Rect, 
-// 	color: Color,
-// 	thickness: f32,
-
-// 	radians: f32, // 0-PI
-// 	rotation: f32, // 0-PI,
-// ) {
-// 	group := &target.groups[len(target.groups) - 1]
-// 	vertices := render_target_push_vertices(target, group, 6)
-
-// 	vertices[0].pos_xy = { rect.l, rect.t }
-// 	vertices[1].pos_xy = { rect.r, rect.t }
-// 	vertices[2].pos_xy = { rect.l, rect.b }
-
-// 	vertices[3].pos_xy = { rect.r, rect.t }
-// 	vertices[4].pos_xy = { rect.l, rect.b }
-// 	vertices[5].pos_xy = { rect.r, rect.b }
-
-// 	center_x, center_y := rect_center(rect)
-// 	// real_roundness := u16(roundness)
-// 	real_thickness := u16(thickness)
-
-// 	for i in 0..<6 {
-// 		vertices[i].uv_xy = { center_x, center_y }
-// 		vertices[i].color = color
-// 		vertices[i].thickness = real_thickness
-// 		vertices[i].kind = .Arc
-// 		vertices[i].additional = { radians, rotation }
-// 	}
-// }
 
 // no
 render_circle :: proc(
@@ -675,7 +638,6 @@ texture_generate :: proc(
 	gl.GenTextures(1, &texture.handle)
 	gl.BindTexture(gl.TEXTURE_2D, texture.handle)
 
-	// gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1) 
 	gl.TexImage2D(
 		gl.TEXTURE_2D,
 		0,
@@ -732,7 +694,6 @@ texture_update_handle :: proc(handle: u32, data: ^byte, width: int, height: int)
 
 // NOTE assumess the correct GL context to be set
 texture_update_subimage :: proc(texture: ^Render_Texture, rect: [4]f32, data: rawptr) {
-	// log.info("RENDERER: Update subimage")
 	w := rect[2] - rect[0]
 	h := rect[3] - rect[1]
 
@@ -799,9 +760,6 @@ shallow_texture_init :: proc(img: ^image.Image) -> (handle: u32) {
 	gl.BindTexture(gl.TEXTURE_2D, handle)
 	defer gl.BindTexture(gl.TEXTURE_2D, 0)
 
-	// gl.PixelStorei(gl.UNPACK_ALIGNMENT, 1) 
-	// try loading the correct format
-	// log.info("loading ")
 	format := u32(img.channels == 4 ? gl.RGBA : gl.RGB)
 
 	gl.TexImage2D(
@@ -862,18 +820,6 @@ shallow_texture_init_data :: proc(
 // GLYPH
 //////////////////////////////////////////////
 
-// rendered_glyph_rect :: proc(info: ^Render_Info, codepoint_offset: int) -> (res: RectF) {
-// 	index := info.vertex_start + codepoint_offset * 6
-// 	v0 := info.target.vertices[index + 0]
-// 	v1 := info.target.vertices[index + 1]
-// 	v2 := info.target.vertices[index + 2]
-// 	res.l = v0.pos_xy.x
-// 	res.r = v1.pos_xy.x
-// 	res.t = v0.pos_xy.y
-// 	res.b = v2.pos_xy.y
-// 	return
-// }
-
 // render a quad from the fontstash texture atlas
 render_glyph_quad :: proc(
 	target: ^Render_Target,
@@ -903,8 +849,6 @@ render_glyph_quad :: proc(
 
 // render string offset to alignment
 render_string_rect :: proc(target: ^Render_Target, rect: RectI, text: string) -> f32 {
-	//TODO: Declared and not used.
-	//ctx := &gs.fc
 	group := &target.groups[len(target.groups) - 1]
 	state := fontstash.__getState(&gs.fc)
 
@@ -969,8 +913,6 @@ render_icon :: proc(target: ^Render_Target, x, y: f32, icon: Icon) -> f32 {
 	codepoint := rune(icon)
 	glyph, ok := fontstash.__getGlyph(ctx, font, codepoint, isize, 0)
 	q: fontstash.Quad
-	//TODO: Declared but not used.
-	// x_origin := x
 	x := x
 	y := y
 
@@ -1137,14 +1079,11 @@ render_sine :: proc(target: ^Render_Target, r: RectI, color: Color) {
 
 	vertices[3] = vertices[1]
 	vertices[4] = vertices[2]
-	// center_x, center_y := rect_center(r)
 	center_x, center_y := f32(r.l), f32(r.t)
 
 	for i in 0 ..< 6 {
 		vertices[i].color = color
 		vertices[i].uv_xy = {center_x, center_y}
-		// vertices[i].roundness = width
-		// vertices[i].thickness = height
 		vertices[i].kind = .Sine
 	}
 }
@@ -1170,9 +1109,6 @@ render_element_clipped :: proc(target: ^Render_Target, element: ^Element) {
 	}
 
 	temp := element_children_sorted_or_unsorted(element)
-
-	// for i := len(temp) - 1; i >= 0; i -= 1 {
-	// 	child := temp[i]
 
 	for child in temp {
 		render_element_clipped(target, child)
@@ -1241,8 +1177,6 @@ render_string_rect_store :: proc(
 	text: string,
 	glyphs: ^[]Rendered_Glyph,
 ) -> f32 {
-	//TODO: Declared and not used.
-	//ctx := &gs.fc
 	group := &target.groups[len(target.groups) - 1]
 	state := fontstash.__getState(&gs.fc)
 
@@ -1317,21 +1251,3 @@ render_line :: proc(
 		vertices[i].kind = .Segment
 	}
 }
-
-// render_group_blend_reset :: proc(target: ^Render_Target) {
-// 	group := &target.groups[len(target.groups) - 1]
-// 	group.blend_sfactor = gl.SRC_ALPHA
-// 	group.blend_dfactor = gl.ONE_MINUS_SRC_ALPHA
-// }
-
-// render_group_blend_test :: proc(
-// 	target: ^Render_Target,
-// 	// sfactor: i32,
-// 	// dfactor: i32,
-// ) {
-// 	group := &target.groups[len(target.groups) - 1]
-// 	group.blend_sfactor = gl.SRC_COLOR
-// 	group.blend_dfactor = gl.ONE_MINUS_SRC_COLOR
-// 	// group.blend_func = gl.FUNC_REVERSE_SUBTRACT
-// 	group.blend_func = gl.FUNC_ADD
-// }

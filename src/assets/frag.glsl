@@ -34,7 +34,6 @@ float sdBox(vec2 p, vec2 b) {
 
 float sdArc(in vec2 p, in vec2 sc, in float ra, float rb) {
 	p.x = abs(p.x);
-	// return ((sc.y*p.x>sc.x*p.y) ? length(p-sc*ra) : abs(length(p)-ra)) - rb;
 	return (sc.y*p.x > sc.x*p.y) ? length(p - ra*sc) - rb : abs(length(p) - ra) - rb;
 }
 
@@ -86,13 +85,6 @@ float sdBezier(vec2 p, vec2 v0, vec2 v1, vec2 v2) {
 	  
 	return length( v0+t*(k+k+t*w) );
 }
-
-// float sdSegment(in vec2 p, in vec2 a, in vec2 b) {
-// 	vec2 ba = b - a;
-// 	vec2 pa = p - a;
-// 	float h = clamp(dot(pa, ba) / dot(ba, ba), 0., 1.);
-// 	return length(pa - h * ba);
-// }
 
 vec3 sdgSegment(vec2 p, vec2 a, vec2 b) {
     vec2 ba = b-a;
@@ -171,8 +163,6 @@ void main(void) {
 	} else if (v_kind == RK_Sine) {
 		// basic sine wave, inverted for only wave coloring
 		float distance = sdCircleWave(v_pos - v_uv, 0.4, 2);
-		// float alpha = 1.0 - smoothstep(0, 0.5, distance);
-		// float alpha = distance;
 		float alpha = 1 - distance;
 		color_goal.a *= alpha;
 	} else if (v_kind == RK_Segment) {
@@ -182,13 +172,6 @@ void main(void) {
 
 		float alpha = 1.0 - smoothstep(-0.5, 0.5, res.x);
 		color_goal.a *= alpha;
-
-		// float alpha = color_goal.a;
-		// color_goal = mix(vec4(1, 0, 0, 1), color_goal, res.x);
-		// color_goal.xyz *= vec3(res.yz, 1);
-		// color_goal *= alpha;
-
-		// color_goal = vec4(1, 0, 0, 1);
 	} else if (v_kind == RK_SV) {
 		vec4 texture_color = texture(u_sampler_sv, v_uv);
 		color_goal = mix(color_goal, texture_color, texture_color.a);

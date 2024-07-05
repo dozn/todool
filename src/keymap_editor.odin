@@ -11,7 +11,6 @@ Keymap_Editor :: struct {
 	window:       ^Window,
 	panel:        ^Panel,
 	grids:        [4]^Static_Grid,
-	// grid_keep_in_frame: Maybe(^Static_Grid),
 
 	// interactables
 	issue_update: ^Static_Grid,
@@ -44,7 +43,6 @@ keymap_editor_window_message :: proc(element: ^Element, msg: Message, di: int, d
 
 					value := strconv.atoi(combo)
 					grid := ke.grids[value - 1]
-					// ke.grid_keep_in_frame = grid
 					state := grid.hide_cells
 					state^ = !state^
 					window_repaint(window)
@@ -129,18 +127,8 @@ keymap_editor_spawn :: proc(du: u32) {
 		ke.menu = {}
 	}
 	ke.window.update_before = proc(window: ^Window) {
-		// if grid, ok := ke.grid_keep_in_frame.?; ok {
-		// 	bounds := grid.children[0].bounds
-		// 	direction := ke.panel.vscrollbar.position > rect_heightf_halfed(bounds)
-		// 	fmt.eprintln("direction", direction)
-		// 	scrollbar_keep_in_frame(ke.panel.vscrollbar, bounds, direction)
-		// 	ke.grid_keep_in_frame = nil
-		// }
-
 		// reset node pointers
 		if ke.issue_update != nil {
-			//TODO: Declared but not used.
-			// children := ke.issue_update.children
 			keymap := cast(^Keymap)ke.issue_update.data
 
 			// update combo lines and offsets
@@ -200,8 +188,6 @@ ke_stealer_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 	case .Paint_Recursive:
 		{
 			target := element.window.target
-			// pressed := element.window.pressed == element
-			// hovered := element.window.hovered == element
 			focused := element.window.focused == element
 
 			outline := focused ? theme.text_good : theme.text_default
@@ -589,7 +575,6 @@ keymap_editor_update_combo_data :: proc(line: ^Static_Line, combo: ^Combo_Node) 
 	b3 := cast(^Button)line.children[2]
 	strings.builder_reset(&b3.builder)
 	fmt.sbprintf(&b3.builder, "0x%2x", combo.du)
-	// b4 := cast(^Button) line.children[3]
 }
 
 keymap_editor_remove_call :: proc(line: ^Static_Line) {
@@ -767,12 +752,6 @@ keymap_editor_push_keymap :: proc(
 keymap_editor_line_append :: proc(grid: ^Static_Grid, node: ^Combo_Node, line_count: int) {
 	p := static_line_init(grid, &grid.cell_sizes, line_count)
 	p.message_user = keymap_editor_static_line_message
-
-	// c1 := strings.string_from_ptr(&node.combo[0], int(node.combo_index))
-	//TODO: Declared but not used.
-	// b1 := ke_button_combo_init(p, {}, node)
-	//TODO: Declared but not used.
-	// b2 := ke_button_command_init(p, {}, node)
 
 	b3 := button_init(p, {}, "")
 

@@ -61,7 +61,6 @@ copy_state_init :: proc(
 	res.stored_text = strings.builder_make(0, text_cap, allocator)
 	res.stored_links = strings.builder_make(0, mem.Kilobyte, allocator)
 	res.stored_tasks = make([dynamic]Copy_Task, 0, task_cap, allocator)
-	// res.stored_folded = make([dynamic]int, 0, 128, allocator)
 	return
 }
 
@@ -69,7 +68,6 @@ copy_state_destroy :: proc(state: Copy_State) {
 	delete(state.stored_text.buf)
 	delete(state.stored_links.buf)
 	delete(state.stored_tasks)
-	// delete(state.stored_folded)
 }
 
 // reset copy data

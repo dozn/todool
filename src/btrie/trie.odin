@@ -331,7 +331,6 @@ comp_search :: proc(key: string) -> bool {
 
 			// check for shortcut first!
 			if comp_bits_is_shortcut(alphabet_bits^) {
-				// fmt.eprintln("check bits", key)
 				rest := comp_bits_shortcut_text(alphabet_bits)
 				assert(len(rest) != 0)
 				rest_index: int

@@ -212,7 +212,6 @@ app_destroy :: proc(a: ^App) {
 	pomodoro_destroy()
 	search_state_destroy()
 	bookmark_state_destroy()
-	// delete(a.tasks_visible)
 	delete(a.drag_list)
 
 	undo_manager_destroy(&a.um_task)
@@ -394,7 +393,6 @@ Task :: struct {
 Mode :: enum {
 	List,
 	Kanban,
-	// Agenda,
 }
 
 // element to custom layout based on internal mode
@@ -1252,9 +1250,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			kanban_width_scaled := int(f32(visuals_kanban_width()) * TASK_SCALE)
 			tab_scaled := int(f32(visuals_tab()) * TASK_SCALE)
 			task_min_width := int(max(300, (rect_widthf(panel.bounds) - 50) * TASK_SCALE))
-			// margin_scaled := int(visuals_task_margin() * TASK_SCALE)
 			margin_scaled := int(f32(visuals_task_margin()) * TASK_SCALE * 10) / 10
-			// fmt.eprintln("GAPS", gap_vertical_scaled)
 
 			if task, ok := app.keep_task_cam.?; ok {
 				app.keep_task_cam_rect = task.element.bounds
@@ -1298,8 +1294,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 					kanban_current: RectI
 					kanban_children_count: int
 					kanban_children_start: int
-					//TODO: Declared but not used.
-					// root: ^Task
 
 					for list_index, linear_index in app.pool.filter {
 						task := app_task_list(list_index)
@@ -1378,8 +1372,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 
 				mx := diff_x
 				my := diff_y
-				// my := difft + (element.window.cursor_y - app.keep_task_cam_rect.t)
-				// my := difft - (element.window.cursor_y)
 
 				mode_panel_cam_freehand_on(cam)
 				cam_inc_y(cam, f32(my))
@@ -1403,7 +1395,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				fcs_font(font_regular)
 				fcs_color(theme.text_default)
 				render_string_rect(target, panel.bounds, "press \"return\" to insert a new task")
-				// return 0
 			}
 
 			camx, camy := cam_offsets(cam)
@@ -1411,28 +1402,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			bounds.r += int(camx)
 			bounds.t += int(camy)
 			bounds.b += int(camy)
-
-			// {
-			// 	r1 := bounds
-			// 	r1.r = r1.l + LINE_WIDTH
-			// 	render_rect(target, r1, RED)
-
-			// 	r2 := bounds
-			// 	r2.b = r2.t + LINE_WIDTH
-			// 	render_rect(target, r2, RED)
-
-			// 	r3 := bounds
-			// 	r3.b = r3.t
-			// 	r3.t = 0
-			// 	r3.r = r3.l + LINE_WIDTH
-			// 	render_rect(target, r3, BLUE)
-
-			// 	r4 := bounds
-			// 	r4.r = r4.l
-			// 	r4.l = 0
-			// 	r4.b = r4.t + LINE_WIDTH
-			// 	render_rect(target, r4, BLUE)
-			// }
 
 			mode_panel_draw_verticals(target)
 			tasks_render_with_focus_animation(target)
@@ -1517,7 +1486,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 				render_push_clip(target, panel.clip)
 				rect := panel.clip
 				rect.b = rect.t + 50
-				// rect.l = rect.r - 300
 				ms := gs.dt * 1000
 				fps := 1 / gs.dt
 				fcs_ahv()
@@ -1609,12 +1577,7 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 
 				mx := element.window.cursor_x - element.bounds.l
 				my := element.window.cursor_y - element.bounds.t
-				// fmt.eprintln("XY", element.bounds.l, element.bounds.t)
-				// fmt.eprintln("MOUSE REL", my)
-				//TODO: Declared but not used.
-				// old := TASK_SCALE
 				scaling_set(SCALE, TASK_SCALE * factor)
-				// fmt.eprintln("SCALE", old, "->", TASK_SCALE)
 				cam_inc_x(cam, f32(mx) / TASK_SCALE * (1 - factor))
 				cam_inc_y(cam, f32(my) / TASK_SCALE * (1 - factor))
 				mode_panel_cam_freehand_on(cam)
@@ -1711,7 +1674,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			handled |= y_handled
 
 			// check y afterwards
-			//TODO: "goal_y" declared but not used.
 			_, direction_y := cam_bounds_check_y(
 				cam,
 				panel.bounds,
@@ -1730,7 +1692,6 @@ mode_panel_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr)
 			// NOTE just check this everytime due to inconsistency
 			mode_panel_cam_bounds_check_x(cam, app.caret.rect.l, app.caret.rect.r, true, true)
 
-			// fmt.eprintln("animating!", handled, cam.offset_y, cam.offset_x)
 			return int(handled)
 		}
 	}
@@ -1760,8 +1721,6 @@ task_box_message_custom :: proc(element: ^Element, msg: Message, di: int, dp: ra
 	case .Paint_Recursive:
 		{
 			target := element.window.target
-			//TODO: Declared but not used.
-			// draw_search_results := (.Hide not_in panel_search.flags)
 
 			x := box.bounds.l
 			y := box.bounds.t
@@ -1902,10 +1861,7 @@ task_tags_layout :: proc(task: ^Task, rect: RectI) {
 	text_margin := fcs_task_tags()
 	gap := int(5 * TASK_SCALE)
 	res: RectI
-	//TODO: Declared but not used.
-	// cam := mode_panel_cam()
 	halfed := int(DEFAULT_FONT_SIZE * TASK_SCALE * 0.5)
-	// task.tags_rect = {}
 
 	// layout tag structs and spawn particles when now ones exist
 	for i in 0 ..< u8(8) {
@@ -1950,9 +1906,6 @@ task_layout :: proc(
 	tab_scaled: int,
 	margin_scaled: int,
 ) -> RectI {
-	//TODO: Declared but not used.
-	// offset_indentation := int(task.indentation_smooth * f32(tab_scaled))
-
 	// manually offset the line rectangle in total while retaining parent clip
 	bounds := bounds
 	bounds.t += int(task.top_offset)
@@ -2008,8 +1961,6 @@ task_layout :: proc(
 
 		if move {
 			if task.image_display.bounds == {} {
-				//TODO: Declared but not used.
-				// x, y := rect_center(top)
 				power_mode_spawn_rect(top, 10, theme.text_default)
 			}
 
@@ -2061,7 +2012,6 @@ task_layout :: proc(
 
 	// time date
 	if task_time_date_is_valid(task) {
-		// width := element_message(task.time_date)
 		rect := rect_cut_left(&cut, int(100 * TASK_SCALE))
 		cut.l += int(5 * TASK_SCALE)
 
@@ -2130,7 +2080,6 @@ task_message :: proc(element: ^Element, msg: Message, di: int, dp: rawptr) -> in
 	case .Get_Height:
 		{
 			line_size := task_font_size(element) * len(task.box.wrapped_lines)
-			// line_size += int(f32(task.has_children ? DEFAULT_FONT_SIZE + TEXT_MARGIN_VERTICAL : 0) * TASK_SCALE)
 
 			line_size += draw_tags ? tag_mode_size(tag_mode) + int(5 * TASK_SCALE) : 0
 			line_size +=
@@ -2343,7 +2292,6 @@ goto_init :: proc(window: ^Window) {
 	app.panel_goto = p
 	p.panel.background_index = 2
 	p.width = 200
-	// p.height = DEFAULT_FONT_SIZE * 2 * SCALE + p.panel.margin * 2
 	p.panel.flags |= {}
 	p.panel.margin = 5
 	p.panel.shadow = true
@@ -2398,17 +2346,6 @@ goto_init :: proc(window: ^Window) {
 				handled := true
 
 				switch combo {
-				// case "escape": {
-				// 	goto_transition_unit = 0
-				// 	goto_transition_hide = true
-				// 	goto_transition_animating = true
-				// 	element_animation_start(floaty)
-
-				// 	// reset to origin 
-				// 	task_head = goto_saved_task_head
-				// 	app.task_tail = goto_saved_task_tail
-				// }
-
 				case "return":
 					{
 						app.goto_transition_unit = 0
@@ -2416,7 +2353,6 @@ goto_init :: proc(window: ^Window) {
 						app.goto_transition_animating = true
 						element_animation_start(floaty)
 					}
-
 				case:
 					{
 						handled = false
@@ -2445,17 +2381,9 @@ goto_init :: proc(window: ^Window) {
 				old_head := app.task_head
 				old_tail := app.task_tail
 
-				// NOTE kinda bad because it changes on reparse
-				// if options_vim_use() {
-				// 	temp := task_head
-				// 	task_head = temp + value
-				// 	app.task_tail = temp + value
-				// 	fmt.eprintln(task_head, task_tail)
-				// } else {
 				value -= 1
 				app.task_head = value
 				app.task_tail = value
-				// }
 
 				if old_head != app.task_head && old_tail != app.task_tail {
 					element_repaint(box)
@@ -2490,12 +2418,6 @@ custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 	case .Layout:
 		{
 			bounds := element.bounds
-			// log.info("BOUNDS", element.bounds, window_rect(window_main))
-
-			// if .Hide not_in split.statusbar.stat.flags {
-			// 	bot := rect_cut_bottom(&bounds, int(DEFAULT_FONT_SIZE * SCALE + TEXT_MARGIN_VERTICAL * SCALE * 2))
-			// 	element_move(split.statusbar.stat, bot)
-			// }
 
 			if .Hide not_in panel_search.flags {
 				bot := rect_cut_bottom(&bounds, int(50 * SCALE))
@@ -2549,9 +2471,6 @@ custom_split_message :: proc(element: ^Element, msg: Message, di: int, dp: rawpt
 }
 
 task_panel_init :: proc(split: ^Split_Pane) -> (element: ^Element) {
-	//TODO: Declared but not used.
-	// rect := split.window.rect
-
 	app.custom_split = element_init(
 		Custom_Split,
 		split,
@@ -2778,9 +2697,6 @@ tasks_load_tutorial :: proc() {
 task_context_menu_spawn :: proc(task: ^Task) {
 	menu := menu_init(app.mmpp.window, {.Panel_Expand})
 	defer menu_show(menu)
-
-	//TODO: Declared but not used.
-	// task_multi_context := app.task_head != app.task_tail
 
 	// select this task on single right click
 	if app.task_head == app.task_tail {
@@ -3050,7 +2966,6 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 	w := int(100 * TASK_SCALE)
 	h := int((DEFAULT_FONT_SIZE + TEXT_MARGIN_VERTICAL) * TASK_SCALE)
 	off := int(-10 * TASK_SCALE)
-	// off := int(visuals_task_margin() / 2)
 	default_rect := rect_wh(0, 0, w, h)
 	low, high := task_low_and_high()
 	hovered := app.mmpp.window.hovered
@@ -3089,7 +3004,6 @@ task_render_progressbars :: proc(target: ^Render_Target) {
 				}
 
 				prect.l += int(task.progress_animation[state] * progress_size)
-				// prect.r += i * 2
 			}
 
 			strings.builder_reset(&builder)
@@ -3212,8 +3126,7 @@ todool_menu_bar :: proc(parent: ^Element) -> (split: ^Menu_Split, menu: ^Menu_Ba
 		mbl(p, "Select All", "select_all")
 		mbl(p, "Select Children", "select_children")
 	}
-	// p2 := panel_init(split, { .Panel_Default_Background })
-	// p2.background_index = 1
+
 	return
 }
 
@@ -3245,7 +3158,6 @@ render_line_highlights :: proc(target: ^Render_Target, clip: RectI) {
 	fcs_color(color_alpha(theme.text_default, alpha))
 	gap := int(4 * TASK_SCALE)
 
-	// line_offset := options_vim_use() ? -task_head : 1
 	list := app_focus_list()
 	app_focus_bounds()
 	line_offset := ODIN_DEBUG ? 1 : 0
@@ -3279,8 +3191,6 @@ render_line_highlights :: proc(target: ^Render_Target, clip: RectI) {
 
 		strings.write_int(b, linear_index + line_offset)
 		text := strings.to_string(app.builder_line_number)
-		//TODO: Declared but not used.
-		// width := string_width(text) + TEXT_MARGIN_HORIZONTAL
 		render_string_rect(target, r, text)
 	}
 }
@@ -3470,14 +3380,6 @@ caret_state_render :: proc(target: ^Render_Target, state: ^Caret_State) {
 			color := color_alpha(theme.caret, step * 0.25 * real_alpha)
 			render_rect(target, r, color, 0)
 		}
-
-		// if pm_show() {
-		// 	task := app_task_head()
-		// 	xoff, yoff := cam_offsets(mode_panel_cam())
-		// 	color := theme_task_text(task.state)
-		// 	vert_off := DEFAULT_FONT_SIZE * TASK_SCALE / 2
-		// 	power_mode_spawn_at(motion_last_x, motion_last_y + vert_off, xoff, yoff, 1, color)
-		// }
 
 		state.motion_last_frame = true
 	} else {

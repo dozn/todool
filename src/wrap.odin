@@ -130,13 +130,10 @@ wrap_layout_caret :: proc(
 	loc := #caller_location,
 ) -> (
 	x_offset: int,
-	// using the resultant lines
-	line: int,// in codepoint_index, not byte_offset
+	line: int,// using the resultant lines in codepoint_index, not byte_offset
 ) {
 	assert(len(wrapped_lines) > 0, "Lines should have valid content of lines > 0", loc)
 
-	// get wanted line and byte index offset
-	//TODO: "byte_offset" commented-out.
 	y, _, codepoint_offset := wrap_codepoint_index_to_line(wrapped_lines, codepoint_index)
 	line = y
 

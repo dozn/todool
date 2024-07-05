@@ -102,7 +102,6 @@ spell_check_render_missing_words :: proc(target: ^Render_Target, task: ^Task) {
 			// TODO CHECK UTF8 WORD HERE?
 			strings.write_rune(&builder, codepoint)
 		}
-		// res := rax.CustomFind(rt, raw_data(builder.buf), len(builder.buf))
 		exists := spell_check_mapping(strings.to_string(builder))
 
 		// render the result when not found
@@ -151,8 +150,6 @@ compressed_trie_build :: proc() {
 
 		// lowercase valid alpha
 		if 'A' <= b && b <= 'Z' {
-			//TODO: Declared but not used.
-			// old := b
 			b += 32
 		}
 
@@ -182,7 +179,6 @@ compressed_trie_build :: proc() {
 }
 
 spell_check_init :: proc() {
-	// btrie.comp_read_from_file("assets/comp_trie.bin")
 	btrie.comp_read_from_data(spell_check_bin)
 	sc.word_results = make([dynamic]Word_Result, 0, 32)
 
@@ -234,7 +230,6 @@ spell_check_mapping_add :: proc(key: string) -> bool {
 	// only if the key doesnt exist in the compressed trie
 	if !btrie.comp_search(key) {
 		_, err := strings.intern_get(&sc.user_intern, key)
-		// fmt.eprintln("added --->", key)
 		return err == nil
 	}
 
